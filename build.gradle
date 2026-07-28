@@ -20,6 +20,17 @@ fabricApi {
 	}
 }
 
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"lucky" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -27,6 +38,9 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	include implementation("net.kyori:adventure-text-minimessage:4.23.0")
+	include implementation("net.kyori:adventure-text-serializer-gson:4.23.0")
 }
 
 processResources {

@@ -1,0 +1,20 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": [
+    {
+      "entity": {
+        "type": "minecraft:rabbit",
+        "posOffset": "#circleOffset(3)",
+        "amount": "#random(5,10)",
+        "nbt": "{RabbitType:#random(0,5)}"
+      }
+    },
+    {
+      "particle": {
+        "type": "minecraft:heart",
+        "amount": "20"
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "luck": -1,
+  "weight": 1.0,
+  "drop": {
+    "item": {
+      "type": "minecraft:rotten_flesh"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": {
+    "entity": {
+      "type": "minecraft:villager",
+      "nbt": "{VillagerData:{level:3,profession:\"minecraft:armorer\",type:\"minecraft:jungle\"},Offers:{Recipes:[{buy:{id:\"minecraft:diamond\",count:#random(12,17)},sell:{id:\"minecraft:diamond_helmet\",count:1,components:{\"minecraft:custom_name\":{\"text\":\"Hero's Helmet\",\"color\":\"blue\",\"bold\":true,\"italic\":false},\"minecraft:enchantments\":{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}}},maxUses:1},{buy:{id:\"minecraft:diamond\",count:#random(20,25)},sell:{id:\"minecraft:diamond_chestplate\",count:1,components:{\"minecraft:custom_name\":{\"text\":\"Hero's Chestplate\",\"color\":\"blue\",\"bold\":true,\"italic\":false},\"minecraft:enchantments\":{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}}},maxUses:1},{buy:{id:\"minecraft:diamond\",count:#random(15,20)},sell:{id:\"minecraft:diamond_leggings\",count:1,components:{\"minecraft:custom_name\":{\"text\":\"Hero's Leggings\",\"color\":\"blue\",\"bold\":true,\"italic\":false},\"minecraft:enchantments\":{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}}},maxUses:1},{buy:{id:\"minecraft:diamond\",count:#random(12,17)},sell:{id:\"minecraft:diamond_boots\",count:1,components:{\"minecraft:custom_name\":{\"text\":\"Hero's Boots\",\"color\":\"blue\",\"bold\":true,\"italic\":false},\"minecraft:enchantments\":{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}}},maxUses:1}]},CustomName:{\"text\":\"Hero Villager\",\"color\":\"blue\",\"bold\":true},CustomNameVisible:1b}"
+    }
+  }
+}

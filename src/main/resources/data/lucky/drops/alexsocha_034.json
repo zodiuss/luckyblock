@@ -1,0 +1,10 @@
+{
+  "luck": -1,
+  "weight": 1.0,
+  "drop": {
+    "item": {
+      "type": "minecraft:poppy",
+      "components": "[custom_name={\"text\":\"Romantic Rose\",\"color\":\"red\",\"italic\":false}]"
+    }
+  }
+}

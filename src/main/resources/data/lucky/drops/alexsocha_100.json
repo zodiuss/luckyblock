@@ -1,0 +1,70 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": [
+    {
+      "structure": {
+        "type": "wishing_well.nbt",
+        "centerY": 2
+      }
+    },
+    {
+      "message": "A wishing well? Maybe you should throw in a coin..."
+    },
+    {
+      "command": "give #pName minecraft:gold_nugget[minecraft:item_name={\"text\":\"Coin\",\"italic\":false,\"color\":\"gold\"}]"
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "y": "0-3",
+        "customDrop": {
+          "drop": [
+            {
+              "message": "<yellow>Your wish came true! (If you like potatoes)"
+            },
+            {
+              "block": {
+                "type": "minecraft:air",
+                "y": "0+3"
+              }
+            },
+            {
+              "block": {
+                "type": "minecraft:beacon",
+                "y": "0+2"
+              }
+            },
+            {
+              "command": "execute at ~ ~2 ~ run kill @e[type=item,distance=0..2]"
+            },
+            {
+              "item": {
+                "type": "minecraft:potato",
+                "amount": 128,
+                "y": "0+10",
+                "posOffset": "#circleOffset(4)"
+              }
+            },
+            {
+              "item": {
+                "type": "minecraft:baked_potato",
+                "amount": 64,
+                "y": "0+10",
+                "posOffset": "#circleOffset(4)"
+              }
+            },
+            {
+              "item": {
+                "type": "minecraft:poisonous_potato",
+                "amount": 32,
+                "y": "0+10",
+                "posOffset": "#circleOffset(4)"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

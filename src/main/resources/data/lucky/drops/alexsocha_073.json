@@ -1,0 +1,22 @@
+{
+  "luck": -1,
+  "weight": 1.0,
+  "drop": [
+    {
+      "difficulty": "hard"
+    },
+    {
+      "entity": {
+        "type": "minecraft:witch"
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:bat",
+        "posOffset": "#circleOffset(0,1)",
+        "y": "0+#random(0,2)",
+        "amount": "64"
+      }
+    }
+  ]
+}

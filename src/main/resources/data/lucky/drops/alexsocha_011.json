@@ -1,0 +1,21 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "item": {
+        "type": "minecraft:iron_horse_armor"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:golden_horse_armor"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:diamond_horse_armor"
+      }
+    }
+  ]
+}

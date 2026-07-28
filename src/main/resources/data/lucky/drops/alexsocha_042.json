@@ -1,0 +1,18 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "item": {
+        "type": "minecraft:ender_pearl",
+        "amount": "10"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:ender_eye",
+        "amount": "5"
+      }
+    }
+  ]
+}

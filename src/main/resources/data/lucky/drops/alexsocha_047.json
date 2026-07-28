@@ -1,0 +1,84 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "item": {
+        "type": "minecraft:ender_pearl",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:blaze_rod",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:ghast_tear",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:gold_nugget",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:nether_wart",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:spider_eye",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:fermented_spider_eye",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:blaze_powder",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:magma_cream",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:ender_eye",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:glistering_melon_slice",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:rabbit_foot",
+        "amount": "#random(1,3)"
+      }
+    },
+    {
+      "particle": {
+        "type": "minecraft:splashpotion",
+        "amount": "1"
+      }
+    }
+  ]
+}

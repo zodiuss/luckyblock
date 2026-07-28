@@ -1,0 +1,11 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": {
+    "item": {
+      "type": "minecraft:enchanted_book",
+      "amount": "#random(7,10)",
+      "components": "(stored_enchantments=#randEnchantment)"
+    }
+  }
+}

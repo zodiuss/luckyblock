@@ -1,0 +1,1923 @@
+package net.zodiuss.luckyblock.drop;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.commands.CommandSource;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.item.ItemParser;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
+import net.zodiuss.luckyblock.LuckyBlock;
+import net.zodiuss.luckyblock.component.CustomDropData;
+import net.zodiuss.luckyblock.component.ModComponents;
+import net.zodiuss.luckyblock.component.StructureAnchor;
+import net.zodiuss.luckyblock.drop.DropAnchor;
+import net.zodiuss.luckyblock.block.LuckyBlocks;
+import net.zodiuss.luckyblock.structure.LuckyStructurePlacer;
+import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class LuckyDropExecutor {
+    private static final Pattern RANDOM_PATTERN = Pattern.compile("#(?:random|rand)\\(\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*\\)");
+    private static final RandomEnchantment[] RANDOM_ENCHANTMENTS = {
+            new RandomEnchantment("minecraft:aqua_affinity", 1),
+            new RandomEnchantment("minecraft:bane_of_arthropods", 5),
+            new RandomEnchantment("minecraft:binding_curse", 1),
+            new RandomEnchantment("minecraft:blast_protection", 4),
+            new RandomEnchantment("minecraft:breach", 4),
+            new RandomEnchantment("minecraft:channeling", 1),
+            new RandomEnchantment("minecraft:density", 5),
+            new RandomEnchantment("minecraft:depth_strider", 3),
+            new RandomEnchantment("minecraft:efficiency", 5),
+            new RandomEnchantment("minecraft:feather_falling", 4),
+            new RandomEnchantment("minecraft:fire_aspect", 2),
+            new RandomEnchantment("minecraft:fire_protection", 4),
+            new RandomEnchantment("minecraft:flame", 1),
+            new RandomEnchantment("minecraft:fortune", 3),
+            new RandomEnchantment("minecraft:frost_walker", 2),
+            new RandomEnchantment("minecraft:impaling", 5),
+            new RandomEnchantment("minecraft:infinity", 1),
+            new RandomEnchantment("minecraft:knockback", 2),
+            new RandomEnchantment("minecraft:looting", 3),
+            new RandomEnchantment("minecraft:loyalty", 3),
+            new RandomEnchantment("minecraft:luck_of_the_sea", 3),
+            new RandomEnchantment("minecraft:lure", 3),
+            new RandomEnchantment("minecraft:mending", 1),
+            new RandomEnchantment("minecraft:multishot", 1),
+            new RandomEnchantment("minecraft:piercing", 4),
+            new RandomEnchantment("minecraft:power", 5),
+            new RandomEnchantment("minecraft:projectile_protection", 4),
+            new RandomEnchantment("minecraft:protection", 4),
+            new RandomEnchantment("minecraft:punch", 2),
+            new RandomEnchantment("minecraft:quick_charge", 3),
+            new RandomEnchantment("minecraft:respiration", 3),
+            new RandomEnchantment("minecraft:riptide", 3),
+            new RandomEnchantment("minecraft:sharpness", 5),
+            new RandomEnchantment("minecraft:silk_touch", 1),
+            new RandomEnchantment("minecraft:smite", 5),
+            new RandomEnchantment("minecraft:soul_speed", 3),
+            new RandomEnchantment("minecraft:sweeping_edge", 3),
+            new RandomEnchantment("minecraft:swift_sneak", 3),
+            new RandomEnchantment("minecraft:thorns", 3),
+            new RandomEnchantment("minecraft:unbreaking", 3),
+            new RandomEnchantment("minecraft:vanishing_curse", 1),
+            new RandomEnchantment("minecraft:wind_burst", 3)
+    };
+
+    public static void execute(LuckyDrop drop, ServerLevel level, BlockPos pos, Player player) {
+        execute(drop, level, pos, player, StructureAnchor.EMPTY);
+    }
+
+    public static void execute(LuckyDrop drop, ServerLevel level, BlockPos pos, Player player, StructureAnchor structureAnchor) {
+        Context context = new Context(
+                drop.id(),
+                level,
+                pos,
+                player,
+                level.getRandom(),
+                "$.drop",
+                structureAnchor != null ? structureAnchor : StructureAnchor.EMPTY,
+                Context.NO_REPEAT_INDEX
+        );
+        LuckyBlock.LOGGER.info("Running lucky drop {} at {} in {}", drop.id(), pos, level.dimension().identifier());
+        try {
+            executeElement(drop.drop(), context);
+        } catch (RuntimeException exception) {
+            logFailure("execute selected drop", context, exception);
+        }
+    }
+
+    private static void executeElement(JsonElement element, Context context) {
+        if (element == null || element.isJsonNull()) {
+            return;
+        }
+
+        if (element.isJsonArray()) {
+            JsonArray children = element.getAsJsonArray();
+            for (int i = 0; i < children.size(); i++) {
+                executeElement(children.get(i), context.child("[" + i + "]"));
+            }
+            return;
+        }
+
+        if (!element.isJsonObject()) {
+            throw new IllegalArgumentException("Lucky drop action must be an object or array");
+        }
+
+        JsonObject action = element.getAsJsonObject();
+
+        if (action.has("delay")) {
+            int delay = Math.max(0, getInt(action, "delay", 0, context));
+            if (delay > 0) {
+                scheduleDelayed(context, delay, () -> executeActionObject(action, context));
+                return;
+            }
+        }
+
+        executeActionObject(action, context);
+    }
+
+    private static void executeActionObject(JsonObject action, Context context) {
+        if (action.has("message")) {
+            runAction("message", context.child(".message"), () -> sendMessage(action, context));
+        }
+        if (action.has("command")) {
+            runAction("command", context.child(".command"), () -> runCommand(action, context));
+        }
+        if (action.has("item")) {
+            runAction("item", context.child(".item"), () -> dropItem(action.getAsJsonObject("item"), context.child(".item")));
+        }
+        if (action.has("block")) {
+            runAction("block", context.child(".block"), () -> setBlock(action.getAsJsonObject("block"), context.child(".block")));
+        }
+        if (action.has("entity")) {
+            runAction("entity", context.child(".entity"), () -> summonEntity(action.getAsJsonObject("entity"), context.child(".entity")));
+        }
+        if (action.has("repeat")) {
+            runAction("repeat", context.child(".repeat"), () -> repeat(action.getAsJsonObject("repeat"), context.child(".repeat")));
+        }
+        if (action.has("random")) {
+            runAction("random", context.child(".random"), () -> random(action.getAsJsonObject("random"), context.child(".random")));
+        }
+        if (action.has("group")) {
+            runAction("group", context.child(".group"), () -> group(action.getAsJsonObject("group"), context.child(".group")));
+        }
+        if (action.has("fill")) {
+            runAction("fill", context.child(".fill"), () -> fill(action.getAsJsonObject("fill"), context.child(".fill")));
+        }
+        if (action.has("explosion")) {
+            runAction("explosion", context.child(".explosion"), () -> explosion(action.getAsJsonObject("explosion"), context.child(".explosion")));
+        }
+        if (action.has("sound")) {
+            runAction("sound", context.child(".sound"), () -> sound(action.getAsJsonObject("sound"), context.child(".sound")));
+        }
+        if (action.has("particle")) {
+            runAction("particle", context.child(".particle"), () -> particle(action.getAsJsonObject("particle"), context.child(".particle")));
+        }
+        if (action.has("time")) {
+            runAction("time", context.child(".time"), () -> runAtBlock("time set " + evaluateString(action.get("time"), context.random()), context));
+        }
+        if (action.has("difficulty")) {
+            runAction("difficulty", context.child(".difficulty"), () -> runAtBlock("difficulty " + evaluateString(action.get("difficulty"), context.random()), context));
+        }
+        if (action.has("structure")) {
+            runAction("structure", context.child(".structure"), () -> structure(action.getAsJsonObject("structure"), context.child(".structure")));
+        }
+        if (action.has("legacy")) {
+            runAction("legacy", context.child(".legacy"), () -> executeLegacy(evaluateString(action.get("legacy"), context.random()), context.child(".legacy")));
+        }
+    }
+
+    private static void scheduleDelayed(Context context, int ticks, Runnable runnable) {
+        long executeAt = context.level().getGameTime() + ticks;
+        LuckyDropScheduler.schedule(context.level(), executeAt, () -> {
+            try {
+                runnable.run();
+            } catch (RuntimeException exception) {
+                logFailure("delayed action", context, exception);
+            }
+        });
+    }
+
+    private static void runAction(String action, Context context, Runnable runnable) {
+        try {
+            runnable.run();
+        } catch (RuntimeException exception) {
+            logFailure(action, context, exception);
+        }
+    }
+
+    private static void sendMessage(JsonObject action, Context context) {
+        broadcastMessage(context, evaluateString(action.get("message"), context));
+    }
+
+    private static void broadcastMessage(Context context, String message) {
+        Component component = DropMessages.parse(message, context.level().registryAccess());
+        context.level().getServer().getPlayerList().broadcastSystemMessage(component, false);
+    }
+
+    private static void runCommand(JsonObject action, Context context) {
+        String command = evaluateString(action.get("command"), context);
+        runAtBlock(command, context, actionOrigin(action, context));
+    }
+
+    private static void dropItem(JsonObject item, Context context) {
+        BlockPos origin = actionOrigin(item, context);
+        String id = resolveItemId(getString(item, "type", getString(item, "id", "minecraft:air", context.random()), context.random()), context);
+        int amount = Math.max(1, getInt(item, "amount", 1, context));
+        String pos = relativePos(item, context);
+        String components = item.has("components")
+                ? toItemComponents(evaluateString(item.get("components"), context.random()), context)
+                : "";
+        String nbt = item.has("nbt")
+                ? "," + rawCommandValue(item.get("nbt"), context).replaceFirst("^\\{", "").replaceFirst("}$", "")
+                : "";
+        if (!nbt.isEmpty()) {
+            int remaining = amount;
+            int maxStackSize = maxStackSize(id);
+            while (remaining > 0) {
+                int stackSize = Math.min(remaining, maxStackSize);
+                runAtBlock("summon minecraft:item " + pos + " {Item:{id:\"" + id + components + "\",count:" + stackSize + nbt + "},Motion:" + randomItemMotion(context) + "}", context, origin);
+                remaining -= stackSize;
+            }
+            return;
+        }
+
+        spawnParsedItem(id + components, amount, item, context);
+    }
+
+    private static void setBlock(JsonObject block, Context context) {
+        BlockPos origin = actionOrigin(block, context);
+        String id = getString(block, "type", getString(block, "id", "minecraft:air", context.random()), context.random());
+        String state = block.has("state") ? evaluateString(block.get("state"), context) : "";
+        String nbt = block.has("nbt") ? rawCommandValue(block.get("nbt"), context) : "";
+        CustomDropData customDrop = CustomDropData.EMPTY;
+
+        if (block.has("customDrop")) {
+            customDrop = parseCustomDrop(block.get("customDrop"));
+        }
+
+        if (customDrop.isPresent()) {
+            nbt = "";
+        }
+
+        String mode = getString(block, "mode", "replace", context.random());
+        String command = String.format(Locale.ROOT, "setblock %s %s%s%s %s", relativePos(block, context), id, state, nbt, mode);
+        runAtBlock(command, context, origin);
+
+        if (customDrop.isPresent() && LuckyBlocks.isLuckyBlockId(id)) {
+            BlockPos target = resolveBlockTarget(block, origin, context);
+            CustomDropData dropToApply = customDrop;
+            BlockPos structureCenter = origin;
+            int rotation = StructureCoords.playerDirection(context.player());
+            boolean storeStructureAnchor = block.has("posOffset")
+                    && evaluateString(block.get("posOffset"), context).startsWith("#sPos(");
+            LuckyDropScheduler.schedule(context.level(), context.level().getGameTime() + 1, () ->
+                    applyCustomDropToBlock(context.level(), target, dropToApply, structureCenter, rotation, storeStructureAnchor));
+        }
+
+        if (block.has("lootTable")) {
+            runAtBlock("loot replace block " + relativePos(block, context) + " container.0 loot " + evaluateString(block.get("lootTable"), context), context, origin);
+        }
+    }
+
+    private static CustomDropData parseCustomDrop(JsonElement element) {
+        if (element.isJsonObject()) {
+            JsonObject object = element.getAsJsonObject();
+            if (object.has("drop_id")) {
+                return CustomDropData.ofId(object.get("drop_id").getAsString());
+            }
+            if (object.has("drop")) {
+                return CustomDropData.ofInline(object.get("drop"));
+            }
+        }
+
+        return CustomDropData.ofInline(element);
+    }
+
+    private static BlockPos resolveBlockTarget(JsonObject block, BlockPos origin, Context context) {
+        int[] offset = resolvePosOffset(block, context);
+        return origin.offset(offset[0], offset[1], offset[2]);
+    }
+
+    private static int[] resolvePosOffset(JsonObject object, Context context) {
+        if (object.has("posOffset")) {
+            String offset = evaluateString(object.get("posOffset"), context);
+            if (offset.startsWith("#circleOffset(") && offset.endsWith(")")) {
+                double[] vec = randomCircleOffset(offset, context.random());
+                return toBlockOffset(vec[0], vec[1], vec[2]);
+            }
+            if (offset.startsWith("#pOffset(") && offset.endsWith(")")) {
+                int[] rotated = parsePlayerOffset(offset, context.player());
+                return new int[] {rotated[0], 0, rotated[1]};
+            }
+            if (StructureCoords.isStructurePosOffset(offset)) {
+                int[] local = StructureCoords.parseCoords(offset);
+                return StructureCoords.giantOffset(
+                        local[0],
+                        local[1],
+                        local[2],
+                        structureRotation(context)
+                );
+            }
+
+            double[] vec = parseLegacyVec3(offset, context);
+            return toBlockOffset(vec[0], vec[1], vec[2]);
+        }
+
+        return new int[] {
+                (int) Math.round(getDouble(object, "x", 0.0, context)),
+                (int) Math.round(getDouble(object, "y", 0.0, context)),
+                (int) Math.round(getDouble(object, "z", 0.0, context))
+        };
+    }
+
+    private static int[] toBlockOffset(double x, double y, double z) {
+        return new int[] {(int) Math.round(x), (int) Math.round(y), (int) Math.round(z)};
+    }
+
+    private static void applyCustomDropToBlock(
+            ServerLevel level,
+            BlockPos pos,
+            CustomDropData customDrop,
+            BlockPos structureCenter,
+            int rotation,
+            boolean storeStructureAnchor
+    ) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (blockEntity == null) {
+            LuckyBlock.LOGGER.warn("Could not apply custom drop to lucky block at {} because no block entity was found", pos);
+            return;
+        }
+
+        DataComponentMap.Builder components = DataComponentMap.builder();
+        components.addAll(blockEntity.components());
+        components.set(ModComponents.CUSTOM_DROP, customDrop);
+        if (storeStructureAnchor) {
+            components.set(ModComponents.STRUCTURE_ANCHOR, new StructureAnchor(
+                    structureCenter.getX(),
+                    structureCenter.getY(),
+                    structureCenter.getZ(),
+                    rotation
+            ));
+        }
+        blockEntity.setComponents(components.build());
+        blockEntity.setChanged();
+    }
+
+    private static void spawnParsedItem(String itemString, int amount, JsonObject item, Context context) {
+        try {
+            BlockPos origin = actionOrigin(item, context);
+            int[] offset = resolvePosOffset(item, context);
+            double x = origin.getX() + 0.5 + offset[0] + getDouble(item, "x", 0.0, context);
+            double y = origin.getY() + 0.5 + offset[1] + getDouble(item, "y", 0.0, context);
+            double z = origin.getZ() + 0.5 + offset[2] + getDouble(item, "z", 0.0, context);
+            ItemStack baseStack = new ItemParser(context.level().registryAccess()).parse(new StringReader(itemString)).createItemStack(1);
+            int remaining = amount;
+            while (remaining > 0) {
+                int stackSize = Math.min(remaining, baseStack.getMaxStackSize());
+                ItemStack stack = baseStack.copyWithCount(stackSize);
+                double[] motion = randomItemMotionValues(context);
+                ItemEntity entity = new ItemEntity(context.level(), x, y, z, stack, motion[0], motion[1], motion[2]);
+                context.level().addFreshEntity(entity);
+                remaining -= stackSize;
+            }
+        } catch (CommandSyntaxException | RuntimeException exception) {
+            logFailure("parse item '" + itemString + "'", context, exception instanceof RuntimeException runtimeException ? runtimeException : new IllegalArgumentException(exception));
+        }
+    }
+
+    private static int maxStackSize(String itemId) {
+        return switch (itemId) {
+            case "minecraft:saddle",
+                 "minecraft:music_disc_11",
+                 "minecraft:music_disc_13",
+                 "minecraft:music_disc_blocks",
+                 "minecraft:music_disc_chirp",
+                 "minecraft:music_disc_far",
+                 "minecraft:music_disc_mall",
+                 "minecraft:music_disc_mellohi",
+                 "minecraft:music_disc_stal",
+                 "minecraft:music_disc_strad",
+                 "minecraft:music_disc_wait",
+                 "minecraft:music_disc_ward",
+                 "minecraft:enchanted_book",
+                 "minecraft:potion",
+                 "minecraft:splash_potion" -> 1;
+            default -> 64;
+        };
+    }
+
+    private static void summonEntity(JsonObject entity, Context context) {
+        BlockPos origin = actionOrigin(entity, context);
+        String type = namespaced(resolveTemplate(getString(entity, "type", "minecraft:pig", context.random()), context));
+        int amount = Math.max(0, getInt(entity, "amount", 1, context));
+
+        for (int i = 0; i < amount; i++) {
+            Context entityContext = context.child("#" + i);
+            String pos = relativePos(entity, entityContext);
+            String nbt = entity.has("nbt") ? " " + rawEntityNbt(type, entity.get("nbt"), entityContext) : "";
+            if (type.equals("minecraft:falling_block") && nbt.contains("BlockState") && !nbt.contains("Time:")) {
+                nbt = nbt.substring(0, nbt.length() - 1) + ",Time:1}";
+            }
+            runAtBlock("summon " + type + " " + pos + nbt, entityContext, origin);
+        }
+    }
+
+    private static void fill(JsonObject fill, Context context) {
+        BlockPos origin = actionOrigin(fill, context);
+        String id = getString(fill, "type", getString(fill, "id", "minecraft:air", context.random()), context.random());
+        int xSize = Math.max(1, getInt(fill, "xSize", 1, context));
+        int ySize = Math.max(1, getInt(fill, "ySize", 1, context));
+        int zSize = Math.max(1, getInt(fill, "zSize", 1, context));
+
+        if (context.structureAnchor().isPresent() && fill.has("posOffset")) {
+            String posOffset = evaluateString(fill.get("posOffset"), context);
+            if (StructureCoords.isStructurePosOffset(posOffset)) {
+                fillStructureVolume(fill, context, origin, id, posOffset, xSize, ySize, zSize);
+                return;
+            }
+        }
+
+        int[] offset = resolvePosOffset(fill, context);
+        double baseX = getDouble(fill, "x", 0.0, context);
+        double baseY = getDouble(fill, "y", 0.0, context);
+        double baseZ = getDouble(fill, "z", 0.0, context);
+        String from = formatRelative(offset[0] + baseX) + " "
+                + formatRelative(offset[1] + baseY) + " "
+                + formatRelative(offset[2] + baseZ);
+        String to = formatRelative(offset[0] + baseX + xSize - 1) + " "
+                + formatRelative(offset[1] + baseY + ySize - 1) + " "
+                + formatRelative(offset[2] + baseZ + zSize - 1);
+        runAtBlock("fill " + from + " " + to + " " + id + " replace", context, origin);
+    }
+
+    private static void fillStructureVolume(
+            JsonObject fill,
+            Context context,
+            BlockPos worldCenter,
+            String blockId,
+            String posOffset,
+            int xSize,
+            int ySize,
+            int zSize
+    ) {
+        Block block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(blockId));
+
+        BlockState state = block.defaultBlockState();
+        BlockPos centerOffset = new BlockPos(
+                StructureCoords.GIANT_CENTER_X,
+                StructureCoords.GIANT_CENTER_Y,
+                StructureCoords.GIANT_CENTER_Z
+        );
+        int[] startLocal = StructureCoords.parseCoords(posOffset);
+        int rotation = structureRotation(context);
+        ServerLevel level = context.level();
+
+        for (int localX = startLocal[0]; localX < startLocal[0] + xSize; localX++) {
+            for (int localY = startLocal[1]; localY < startLocal[1] + ySize; localY++) {
+                for (int localZ = startLocal[2]; localZ < startLocal[2] + zSize; localZ++) {
+                    BlockPos worldPos = StructureCoords.templateLocalToWorld(
+                            new BlockPos(localX, localY, localZ),
+                            centerOffset,
+                            worldCenter,
+                            rotation
+                    );
+                    level.setBlock(worldPos, state, 3);
+                }
+            }
+        }
+    }
+
+    private static void explosion(JsonObject explosion, Context context) {
+        BlockPos origin = actionOrigin(explosion, context);
+        int fuse = Math.max(0, getInt(explosion, "fuse", 0, context));
+        runAtBlock("summon minecraft:tnt " + relativePos(explosion, context) + " {Fuse:" + fuse + "}", context, origin);
+    }
+
+    private static void sound(JsonObject sound, Context context) {
+        BlockPos origin = actionOrigin(sound, context);
+        String id = getString(sound, "type", getString(sound, "id", "minecraft:block.note_block.pling", context.random()), context.random());
+        runAtBlock("playsound " + id + " master @a " + relativePos(sound, context), context, origin);
+    }
+
+    private static void particle(JsonObject particle, Context context) {
+        BlockPos origin = actionOrigin(particle, context);
+        String id = getString(particle, "type", getString(particle, "id", "minecraft:happy_villager", context.random()), context.random());
+        int amount = Math.max(1, getInt(particle, "amount", getInt(particle, "particleAmount", 1, context), context));
+        runAtBlock("particle " + id + " " + relativePos(particle, context) + " 0 0 0 0 " + amount, context, origin);
+    }
+
+    private static void structure(JsonObject structure, Context context) {
+        JsonObject placement = structure.deepCopy();
+        if (placement.has("rotation")) {
+            placement.addProperty("rotation", evaluateString(placement.get("rotation"), context));
+        }
+
+        LuckyStructurePlacer.place(
+                placement,
+                context.level().getServer(),
+                context.level(),
+                context.pos(),
+                context.player(),
+                context.random(),
+                context.dropId(),
+                context.path(),
+                context.structureAnchor()
+        );
+    }
+
+    private static void repeat(JsonObject repeat, Context context) {
+        if (!repeat.has("drops")) {
+            return;
+        }
+
+        JsonElement drops = repeat.get("drops");
+        if (drops == null || drops.isJsonNull()) {
+            return;
+        }
+
+        int amount = Math.max(0, getInt(repeat, "amount", 1, context));
+        for (int i = 0; i < amount; i++) {
+            executeElement(drops, context.withRepeatIndex(i).child("[" + i + "]").child(".drops"));
+        }
+    }
+
+    private static void random(JsonObject random, Context context) {
+        JsonArray drops = random.getAsJsonArray("drops");
+        if (drops == null || drops.isEmpty()) {
+            return;
+        }
+
+        int amount = random.has("amount") ? Math.min(drops.size(), Math.max(0, getInt(random, "amount", 1, context))) : 1;
+        List<Integer> remaining = new ArrayList<>();
+        for (int i = 0; i < drops.size(); i++) {
+            remaining.add(i);
+        }
+
+        for (int i = 0; i < amount; i++) {
+            int remainingIndex = context.random().nextInt(remaining.size());
+            int dropIndex = remaining.remove(remainingIndex);
+            executeElement(drops.get(dropIndex), context.child(".drops[" + dropIndex + "]"));
+        }
+    }
+
+    private static void group(JsonObject group, Context context) {
+        JsonArray drops = group.getAsJsonArray("drops");
+        if (drops == null || drops.isEmpty()) {
+            return;
+        }
+
+        JsonObject defaults = group.has("defaults") ? group.getAsJsonObject("defaults") : null;
+        if (!group.has("amount")) {
+            for (int i = 0; i < drops.size(); i++) {
+                executeElement(applyDefaults(drops.get(i), defaults), context.child(".drops[" + i + "]"));
+            }
+            return;
+        }
+
+        int amount = Math.min(drops.size(), Math.max(0, getInt(group, "amount", drops.size(), context)));
+        List<Integer> remaining = new ArrayList<>();
+        for (int i = 0; i < drops.size(); i++) {
+            remaining.add(i);
+        }
+
+        for (int i = 0; i < amount; i++) {
+            int remainingIndex = context.random().nextInt(remaining.size());
+            int dropIndex = remaining.remove(remainingIndex);
+            executeElement(applyDefaults(drops.get(dropIndex), defaults), context.child(".drops[" + dropIndex + "]"));
+        }
+    }
+
+    private static JsonElement applyDefaults(JsonElement element, JsonObject defaults) {
+        if (defaults == null || !element.isJsonObject()) {
+            return element;
+        }
+
+        JsonObject object = element.getAsJsonObject();
+        JsonObject merged = object.deepCopy();
+        for (Map.Entry<String, JsonElement> entry : defaults.entrySet()) {
+            if (!merged.has(entry.getKey())) {
+                merged.add(entry.getKey(), entry.getValue());
+            }
+        }
+
+        return merged;
+    }
+
+    private static void executeLegacy(String legacyDrop, Context context) {
+        legacyDrop = legacyDrop.trim();
+        if (legacyDrop.isEmpty()) {
+            return;
+        }
+
+        if (legacyDrop.startsWith("group")) {
+            executeLegacyGroup(legacyDrop, context);
+            return;
+        }
+
+        Map<String, String> props = parseLegacyProps(legacyDrop);
+        String type = props.getOrDefault("type", props.containsKey("ID") || props.containsKey("id") ? "item" : "");
+
+        switch (type.toLowerCase(Locale.ROOT)) {
+            case "item" -> executeLegacyItem(props, context);
+            case "block" -> executeLegacyBlock(props, context);
+            case "entity" -> executeLegacyEntity(props, context);
+            case "command" -> runAtBlock(legacyValue(props, "ID", context), context);
+            case "message" -> broadcastMessage(context, unquote(legacyValue(props, "ID", context)));
+            case "difficulty" -> runAtBlock("difficulty " + legacyValue(props, "ID", context), context);
+            case "time" -> runAtBlock("time set " + legacyValue(props, "ID", context), context);
+            case "sound" -> runAtBlock("playsound " + namespaced(legacyValue(props, "ID", context)) + " master @a ~ ~ ~", context);
+            case "particle" -> runAtBlock("particle " + namespaced(legacyValue(props, "ID", context)) + " ~ ~ ~ 0 0 0 0 1", context);
+            case "explosion" -> runAtBlock("summon minecraft:tnt ~ ~ ~ {Fuse:0}", context);
+            case "fill" -> executeLegacyFill(props, context);
+            case "structure" -> {
+                JsonObject structure = new JsonObject();
+                structure.addProperty("type", legacyValue(props, "ID", context));
+                LuckyStructurePlacer.place(
+                        structure,
+                        context.level().getServer(),
+                        context.level(),
+                        context.pos(),
+                        context.player(),
+                        context.random(),
+                        context.dropId(),
+                        context.path()
+                );
+            }
+            default -> LuckyBlock.LOGGER.warn("Lucky drop {} has unsupported legacy action '{}' at jsonPath={} source={}", context.dropId(), type, context.path(), legacyDrop);
+        }
+    }
+
+    private static void executeLegacyGroup(String legacyDrop, Context context) {
+        int bodyStart = legacyDrop.indexOf('(');
+        int bodyEnd = legacyDrop.lastIndexOf(')');
+        if (bodyStart < 0 || bodyEnd <= bodyStart) {
+            throw new IllegalArgumentException("Malformed legacy group: " + legacyDrop);
+        }
+
+        String header = legacyDrop.substring(0, bodyStart);
+        List<String> children = splitTopLevel(legacyDrop.substring(bodyStart + 1, bodyEnd), ';');
+        int amount = children.size();
+        boolean pickRandom = false;
+
+        if (header.startsWith("group:")) {
+            String amountText = header.substring("group:".length(), header.lastIndexOf(':'));
+            amount = Math.max(0, (int) Math.round(parseLegacyNumber(amountText, context)));
+            pickRandom = true;
+        }
+
+        if (pickRandom) {
+            List<String> remaining = new ArrayList<>(children);
+            for (int i = 0; i < amount && !remaining.isEmpty(); i++) {
+                int index = context.random().nextInt(remaining.size());
+                executeLegacy(remaining.remove(index), context.child(".group[" + index + "]"));
+            }
+            return;
+        }
+
+        for (int i = 0; i < children.size(); i++) {
+            executeLegacy(children.get(i), context.child(".group[" + i + "]"));
+        }
+    }
+
+    private static void executeLegacyItem(Map<String, String> props, Context context) {
+        String id = namespaced(legacyValue(props, "ID", context));
+        int amount = Math.max(1, (int) Math.round(parseLegacyNumber(props.getOrDefault("amount", "1"), context)));
+        String nbt = props.containsKey("NBTTag") ? "," + legacyNbt("tag", props.get("NBTTag"), context) : "";
+        runAtBlock("summon minecraft:item ~ ~ ~ {Item:{id:\"" + id + "\",count:" + amount + nbt + "},Motion:" + randomItemMotion(context) + "}", context);
+    }
+
+    private static void executeLegacyBlock(Map<String, String> props, Context context) {
+        String id = namespaced(legacyValue(props, "ID", context));
+        String pos = legacyRelativePos(props, context);
+        String nbt = props.containsKey("NBTTag") || props.containsKey("tileEntity") ? " " + legacyNbtBody(props.getOrDefault("NBTTag", props.get("tileEntity")), context) : "";
+        runAtBlock("setblock " + pos + " " + id + nbt + " replace", context);
+    }
+
+    private static void executeLegacyEntity(Map<String, String> props, Context context) {
+        String id = namespaced(legacyValue(props, "ID", context));
+        int amount = Math.max(1, (int) Math.round(parseLegacyNumber(props.getOrDefault("amount", "1"), context)));
+        String pos = legacyRelativePos(props, context);
+        String nbt = props.containsKey("NBTTag") ? " " + legacyNbtBody(props.get("NBTTag"), context) : "";
+
+        for (int i = 0; i < amount; i++) {
+            runAtBlock("summon " + id + " " + pos + nbt, context);
+        }
+    }
+
+    private static void executeLegacyFill(Map<String, String> props, Context context) {
+        String id = namespaced(legacyValue(props, "ID", context));
+        int[] size = parseLegacyVec3i(props.getOrDefault("size", "(1,1,1)"), context);
+        runAtBlock("fill ~ ~ ~ ~" + (size[0] - 1) + " ~" + (size[1] - 1) + " ~" + (size[2] - 1) + " " + id + " replace", context);
+    }
+
+    private static void runAtBlock(String command, Context context) {
+        runAtBlock(command, context, context.pos());
+    }
+
+    private static void runAtBlock(String command, Context context, BlockPos origin) {
+        String dimension = context.level().dimension().identifier().toString();
+        String fullCommand = String.format(Locale.ROOT, "execute in %s positioned %d %d %d run %s", dimension, origin.getX(), origin.getY(), origin.getZ(), command);
+
+        try {
+            context.level().getServer().getCommands().performPrefixedCommand(commandSource(context), fullCommand);
+        } catch (RuntimeException exception) {
+            logFailure("run command '" + fullCommand + "'", context, exception);
+        }
+    }
+
+    private static void logFailure(String action, Context context, RuntimeException exception) {
+        LuckyBlock.LOGGER.warn(
+                "Lucky drop {} failed to {} at {} in {} blockPos={} jsonPath={}: {}",
+                context.dropId(),
+                action,
+                context.pos(),
+                context.level().dimension().identifier(),
+                context.pos(),
+                context.path(),
+                exception.getMessage(),
+                exception
+        );
+    }
+
+    private static BlockPos actionOrigin(JsonObject action, Context context) {
+        return DropAnchor.resolve(action, context.pos(), context.player(), null, context.structureAnchor());
+    }
+
+    private static int structureRotation(Context context) {
+        if (context.structureAnchor().isPresent()) {
+            return context.structureAnchor().rotation();
+        }
+
+        return StructureCoords.playerDirection(context.player());
+    }
+
+    private static CommandSourceStack commandSource(Context context) {
+        ServerPlayer serverPlayer = context.player() instanceof ServerPlayer player ? player : null;
+        return new CommandSourceStack(
+                CommandSource.NULL,
+                Vec3.atCenterOf(context.pos()),
+                Vec2.ZERO,
+                context.level(),
+                context.level().getServer().operatorUserPermissions(),
+                "Lucky Block",
+                Component.literal("Lucky Block"),
+                context.level().getServer(),
+                serverPlayer
+        );
+    }
+
+    private static String relativePos(JsonObject object, RandomSource random) {
+        if (object.has("posOffset")) {
+            String offset = evaluateString(object.get("posOffset"), random);
+            if (offset.startsWith("#circleOffset(") && offset.endsWith(")")) {
+                double[] vec = randomCircleOffset(offset, random);
+                return formatRelative(vec[0]) + " " + formatRelative(vec[1]) + " " + formatRelative(vec[2]);
+            }
+        }
+        double x = getDouble(object, "x", 0.0, random);
+        double y = getDouble(object, "y", 0.0, random);
+        double z = getDouble(object, "z", 0.0, random);
+        return formatRelative(x) + " " + formatRelative(y) + " " + formatRelative(z);
+    }
+
+    private static String relativePos(JsonObject object, Context context) {
+        int[] offset = resolvePosOffset(object, context);
+        return formatRelative(offset[0]) + " " + formatRelative(offset[1]) + " " + formatRelative(offset[2]);
+    }
+
+    private static int[] parsePlayerOffset(String offset, @Nullable Player player) {
+        String body = offset.substring("#pOffset(".length(), offset.length() - 1);
+        List<String> parts = splitTopLevel(body, ',');
+        int localX = parts.isEmpty() ? 0 : (int) Math.round(Double.parseDouble(parts.get(0).trim()));
+        int localZ = parts.size() > 1 ? (int) Math.round(Double.parseDouble(parts.get(1).trim())) : 0;
+        return rotatePlayerOffset(localX, localZ, StructureCoords.playerDirection(player));
+    }
+
+    private static int playerDirection(@Nullable Player player) {
+        return StructureCoords.playerDirection(player);
+    }
+
+    private static int[] rotatePlayerOffset(int x, int z, int rotation) {
+        int modRotation = Math.floorMod(rotation, 4);
+        double posX = x;
+        double posZ = z;
+
+        for (int index = 0; index < modRotation; index++) {
+            double oldX = posX;
+            posX = posZ;
+            posZ = -oldX;
+        }
+
+        return new int[] {(int) Math.round(posX), (int) Math.round(posZ)};
+    }
+
+    private static String rawCommandValue(JsonElement element, Context context) {
+        return legacyNbtBody(evaluateString(element, context.random()), context);
+    }
+
+    private static String rawEntityNbt(String entityType, JsonElement element, Context context) {
+        String raw = evaluateString(element, context.random());
+        return legacyNbtBody(raw, context);
+    }
+
+    private static String toItemComponents(String rawComponents, Context context) {
+        rawComponents = rawComponents.trim();
+        if (rawComponents.isEmpty() || rawComponents.equals("{}")) {
+            return "";
+        }
+        if (rawComponents.startsWith("[") && rawComponents.endsWith("]")) {
+            return rawComponents;
+        }
+
+        if (rawComponents.startsWith("{") && rawComponents.endsWith("}")) {
+            rawComponents = rawComponents.substring(1, rawComponents.length() - 1);
+        }
+        if (rawComponents.startsWith("(") && rawComponents.endsWith(")")) {
+            rawComponents = rawComponents.substring(1, rawComponents.length() - 1);
+        }
+
+        List<String> components = new ArrayList<>();
+        Map<String, String> props = parseLegacyProps(rawComponents);
+
+        if (props.containsKey("custom_name")) {
+            components.add("minecraft:custom_name=" + legacyTextComponent(props.get("custom_name"), context));
+        }
+        if (props.containsKey("item_name")) {
+            components.add("minecraft:item_name=" + legacyTextComponent(props.get("item_name"), context));
+        }
+        if (props.containsKey("enchantments")) {
+            components.add("minecraft:enchantments=" + enchantmentComponent(props.get("enchantments"), context));
+        }
+        if (props.containsKey("stored_enchantments")) {
+            components.add("minecraft:stored_enchantments=" + enchantmentComponent(props.get("stored_enchantments"), context));
+        }
+        if (props.containsKey("potion_contents")) {
+            components.add("minecraft:potion_contents=" + potionContentsComponent(props.get("potion_contents"), context));
+        }
+
+        if (components.isEmpty()) {
+            LuckyBlock.LOGGER.warn("Lucky drop {} has unsupported item components '{}' at {}; dropping components", context.dropId(), rawComponents, context.path());
+            return "";
+        }
+
+        return "[" + String.join(",", components) + "]";
+    }
+
+    private static String legacyTextComponent(String rawText, Context context) {
+        Map<String, String> props = parseLegacyProps(stripParens(rawText));
+        String text = unquote(props.getOrDefault("text", rawText));
+        if (DropMessages.usesFormattedText(text)) {
+            return DropMessages.toJsonString(text, context.level().registryAccess());
+        }
+
+        StringBuilder json = new StringBuilder("{\"text\":\"").append(text.replace("\"", "\\\"")).append("\"");
+
+        if (props.containsKey("color")) {
+            json.append(",\"color\":\"").append(unquote(props.get("color"))).append("\"");
+        }
+        if (props.containsKey("bold")) {
+            json.append(",\"bold\":").append(props.get("bold"));
+        }
+        if (props.containsKey("italic")) {
+            json.append(",\"italic\":").append(props.get("italic"));
+        }
+
+        return json.append('}').toString();
+    }
+
+    private static String enchantmentComponent(String rawEnchantments, Context context) {
+        rawEnchantments = rawEnchantments.trim();
+        if (rawEnchantments.startsWith("#")) {
+            return switch (rawEnchantments) {
+                case "#randEnchantment" -> randomEnchantmentComponent(context);
+                case "#luckyBowEnchantments" -> "{\"minecraft:power\":5,\"minecraft:punch\":2,\"minecraft:flame\":1,\"minecraft:infinity\":1}";
+                case "#luckyCrossbowEnchantments" -> "{\"minecraft:quick_charge\":3,\"minecraft:multishot\":1,\"minecraft:unbreaking\":3}";
+                case "#luckyTridentEnchantments" -> "{\"minecraft:loyalty\":3,\"minecraft:impaling\":5,\"minecraft:unbreaking\":3}";
+                case "#luckySwordEnchantments" -> "{\"minecraft:sharpness\":5,\"minecraft:looting\":3,\"minecraft:unbreaking\":3}";
+                case "#luckyToolEnchantments", "#luckyAxeEnchantments" -> "{\"minecraft:efficiency\":5,\"minecraft:fortune\":3,\"minecraft:unbreaking\":3}";
+                case "#luckyFishingRodEnchantments" -> "{\"minecraft:luck_of_the_sea\":3,\"minecraft:lure\":3,\"minecraft:unbreaking\":3}";
+                case "#luckyHelmetEnchantments", "#luckyChestplateEnchantments", "#luckyLeggingsEnchantments", "#luckyBootsEnchantments" -> "{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}";
+                default -> {
+                    LuckyBlock.LOGGER.warn("Lucky drop {} uses unsupported enchantment template '{}' at {}; using empty enchantments", context.dropId(), rawEnchantments, context.path());
+                    yield "{}";
+                }
+            };
+        }
+
+        return rawCommandValue(new JsonPrimitive(rawEnchantments), context);
+    }
+
+    private static String randomEnchantmentComponent(Context context) {
+        RandomEnchantment enchantment = RANDOM_ENCHANTMENTS[context.random().nextInt(RANDOM_ENCHANTMENTS.length)];
+        int level = 1 + context.random().nextInt(enchantment.maxLevel());
+
+        return "{\"" + enchantment.id() + "\":" + level + "}";
+    }
+
+    private static String stripParens(String value) {
+        value = value.trim();
+        if (value.startsWith("(") && value.endsWith(")")) {
+            return value.substring(1, value.length() - 1);
+        }
+
+        return value;
+    }
+
+    private static Map<String, String> parseLegacyProps(String legacyDrop) {
+        Map<String, String> props = new HashMap<>();
+        for (String prop : splitTopLevel(legacyDrop, ',')) {
+            int equalsIndex = prop.indexOf('=');
+            if (equalsIndex > 0) {
+                props.put(prop.substring(0, equalsIndex).trim(), prop.substring(equalsIndex + 1).trim());
+            }
+        }
+
+        return props;
+    }
+
+    private static List<String> splitTopLevel(String value, char delimiter) {
+        List<String> parts = new ArrayList<>();
+        int depth = 0;
+        boolean quoted = false;
+        int start = 0;
+
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '"' && (i == 0 || value.charAt(i - 1) != '\\')) {
+                quoted = !quoted;
+            } else if (!quoted && (c == '(' || c == '[' || c == '{')) {
+                depth++;
+            } else if (!quoted && (c == ')' || c == ']' || c == '}')) {
+                depth--;
+            } else if (!quoted && depth == 0 && c == delimiter) {
+                parts.add(value.substring(start, i).trim());
+                start = i + 1;
+            }
+        }
+
+        parts.add(value.substring(start).trim());
+        parts.removeIf(String::isEmpty);
+        return parts;
+    }
+
+    private static String legacyValue(Map<String, String> props, String key, Context context) {
+        return unquote(replaceLegacyTemplates(props.getOrDefault(key, props.getOrDefault(key.toLowerCase(Locale.ROOT), "")), context));
+    }
+
+    private static String legacyRelativePos(Map<String, String> props, Context context) {
+        if (props.containsKey("posOffset")) {
+            double[] offset = parseLegacyVec3(props.get("posOffset"), context);
+            return formatRelative(offset[0]) + " " + formatRelative(offset[1]) + " " + formatRelative(offset[2]);
+        }
+
+        double x = props.containsKey("posX") ? parseLegacyNumber(props.get("posX"), context) - context.pos().getX() : 0.0;
+        double y = props.containsKey("posY") ? parseLegacyNumber(props.get("posY"), context) - context.pos().getY() : 0.0;
+        double z = props.containsKey("posZ") ? parseLegacyNumber(props.get("posZ"), context) - context.pos().getZ() : 0.0;
+        return formatRelative(x) + " " + formatRelative(y) + " " + formatRelative(z);
+    }
+
+    private static double[] parseLegacyVec3(String value, Context context) {
+        value = value.trim();
+        if (value.startsWith("#circleOffset(") && value.endsWith(")")) {
+            return randomCircleOffset(value, context);
+        }
+        if (value.startsWith("(") && value.endsWith(")")) {
+            value = value.substring(1, value.length() - 1);
+        }
+        List<String> parts = splitTopLevel(value, ',');
+        return new double[] {
+                parts.size() > 0 ? parseLegacyNumber(parts.get(0), context) : 0.0,
+                parts.size() > 1 ? parseLegacyNumber(parts.get(1), context) : 0.0,
+                parts.size() > 2 ? parseLegacyNumber(parts.get(2), context) : 0.0
+        };
+    }
+
+    private static int[] parseLegacyVec3i(String value, Context context) {
+        double[] vec = parseLegacyVec3(value, context);
+        return new int[] {(int) Math.round(vec[0]), (int) Math.round(vec[1]), (int) Math.round(vec[2])};
+    }
+
+    private static double parseLegacyNumber(String value, Context context) {
+        return evaluateArithmeticExpression(replaceLegacyTemplates(value, context).trim());
+    }
+
+    private static double evaluateArithmeticExpression(String expression) {
+        if (expression.isEmpty()) {
+            return 0.0;
+        }
+
+        return new ArithmeticParser(expression).parse();
+    }
+
+    private static String replaceCalc(String value, Context context) {
+        int start = value.indexOf("#calc(");
+        while (start >= 0) {
+            int open = start + "#calc(".length() - 1;
+            int close = findMatchingParen(value, open);
+            if (close < 0) {
+                break;
+            }
+
+            String body = value.substring(open + 1, close);
+            if (body.contains("#calc(")) {
+                start = value.indexOf("#calc(", start + 1);
+                continue;
+            }
+
+            String resolved = applyTemplatesForCalc(body, context);
+            double result = evaluateArithmeticExpression(resolved);
+            value = value.substring(0, start) + formatNumber(result) + value.substring(close + 1);
+            start = value.indexOf("#calc(");
+        }
+
+        return value;
+    }
+
+    private static String applyTemplatesForCalc(String value, Context context) {
+        value = replaceRandom(value, context.random());
+        if (context.repeatIndex() >= 0) {
+            value = value.replace("#index", Integer.toString(context.repeatIndex()));
+        }
+        return value.trim();
+    }
+
+    private static double[] randomCircleOffset(String value, Context context) {
+        return randomCircleOffset(value, context.random());
+    }
+
+    private static double[] randomCircleOffset(String value, RandomSource random) {
+        String body = value.substring("#circleOffset(".length(), value.length() - 1);
+        List<String> parts = splitTopLevel(body, ',');
+        double minRadius = 0.0;
+        double maxRadius = parts.isEmpty() ? 0.0 : Double.parseDouble(replaceRandom(parts.get(0), random));
+
+        if (parts.size() > 1) {
+            minRadius = maxRadius;
+            maxRadius = Double.parseDouble(replaceRandom(parts.get(1), random));
+        }
+
+        double radius = minRadius + random.nextDouble() * (maxRadius - minRadius);
+        double angle = random.nextDouble() * Math.PI * 2.0;
+        return new double[] {Math.cos(angle) * radius, 0.0, Math.sin(angle) * radius};
+    }
+
+    private static String replaceFireworksRocket(String value, RandomSource random) {
+        String marker = "#randFireworksRocket";
+        if (!value.contains(marker)) {
+            return value;
+        }
+
+        String[] shapes = {"small_ball", "large_ball", "star", "creeper", "burst"};
+        String shape = shapes[random.nextInt(shapes.length)];
+        int colors = random.nextInt(0x1000000);
+        boolean trail = random.nextBoolean();
+        boolean twinkle = random.nextBoolean();
+        int flight = 1 + random.nextInt(2);
+        String replacement = "{fireworks:{explosions:[{shape:\"" + shape + "\",colors:[" + colors + "],has_trail:" + trail + "b,has_twinkle:" + twinkle + "b}],flight_duration:" + flight + "b}}";
+
+        return value.replace(marker, replacement);
+    }
+
+    private static String replaceLegacyTemplates(String value, Context context) {
+        value = replaceRandom(value, context.random());
+        value = replaceRandomList(value, context);
+        if (context.repeatIndex() >= 0) {
+            value = value.replace("#index", Integer.toString(context.repeatIndex()));
+        }
+        value = replaceCalc(value, context);
+        value = replaceLaunchMotion(value, context);
+        value = replaceFireworksRocket(value, context.random());
+        value = replacePotionEffectTemplates(value, context);
+        value = value.replace("#bPosX", Integer.toString(context.pos().getX()));
+        value = value.replace("#bPosY", Integer.toString(context.pos().getY()));
+        value = value.replace("#bPosZ", Integer.toString(context.pos().getZ()));
+        if (context.structureAnchor().isPresent()) {
+            value = value.replace("#sRotation", Integer.toString(context.structureAnchor().rotation()));
+        }
+        if (context.player() != null) {
+            value = value.replace("#pName", context.player().getName().getString());
+            value = value.replace("#pUUID", context.player().getUUID().toString());
+            value = value.replace("#pYaw+180f", formatNumber(context.player().getYRot() + 180.0) + "f");
+            value = value.replace("#pYaw", formatNumber(context.player().getYRot()) + "f");
+            value = value.replace("#pPitch", formatNumber(context.player().getXRot()) + "f");
+            value = value.replace("#pSignRotation", Integer.toString(playerSignRotation(context.player())));
+            value = value.replace("#pLeverFacing", StructureCoords.leverFacing(context.player()));
+        }
+        return value;
+    }
+
+    private static int playerSignRotation(Player player) {
+        return Math.floorMod((int) Math.round((player.getYRot() + 180.0) / 22.5), 16);
+    }
+
+    private static String replaceLaunchMotion(String value, Context context) {
+        String marker = "#randLaunchMotion";
+        int start = value.indexOf(marker);
+        while (start >= 0) {
+            int end = start + marker.length();
+            double power = 0.7;
+            double upwardBoost = 0.6;
+
+            if (end < value.length() && value.charAt(end) == '(') {
+                int close = value.indexOf(')', end);
+                if (close > end) {
+                    List<String> args = splitTopLevel(value.substring(end + 1, close), ',');
+                    if (!args.isEmpty()) {
+                        power = Double.parseDouble(replaceRandom(args.get(0), context.random()));
+                    }
+                    if (args.size() > 1) {
+                        upwardBoost = Double.parseDouble(replaceRandom(args.get(1), context.random())) / 20.0;
+                    }
+                    end = close + 1;
+                }
+            }
+
+            String replacement = randomLaunchMotion(context, power, upwardBoost);
+            value = value.substring(0, start) + replacement + value.substring(end);
+            start = value.indexOf(marker, start + replacement.length());
+        }
+
+        return value;
+    }
+
+    private static String randomLaunchMotion(Context context, double power, double upwardBoost) {
+        RandomSource random = context.random();
+        double x;
+        double y;
+        double z;
+        double length;
+
+        do {
+            x = random.nextDouble() * 2.0 - 1.0;
+            z = random.nextDouble() * 2.0 - 1.0;
+            y = random.nextDouble();
+            length = Math.sqrt(x * x + y * y + z * z);
+        } while (length < 1e-6);
+
+        x /= length;
+        y /= length;
+        z /= length;
+
+        double magnitude = power * random.nextDouble() * (1.0 + upwardBoost);
+        x *= magnitude;
+        y *= magnitude;
+        z *= magnitude;
+
+        return "[" + formatNumber(x) + "d," + formatNumber(y) + "d," + formatNumber(z) + "d]";
+    }
+
+    private static String legacyNbt(String key, String value, Context context) {
+        return key + ":" + legacyNbtBody(value, context);
+    }
+
+    private static String legacyNbtBody(String value, Context context) {
+        value = replaceLegacyTemplates(value, context).trim();
+        if (value.startsWith("{") && value.endsWith("}")) {
+            return convertJsonCustomNames(value, context);
+        }
+        if (value.startsWith("(") && value.endsWith(")")) {
+            value = value.substring(1, value.length() - 1);
+        }
+        value = convertLegacyComponents(value, context);
+        value = convertLegacyCustomName(value, context);
+        value = convertLegacyBlockStateNames(value);
+        value = convertLegacyResourceFields(value);
+        return "{" + toSnbt(value) + "}";
+    }
+
+    private static String randomItemMotion(Context context) {
+        double[] motion = randomItemMotionValues(context);
+        return "[" + formatNumber(motion[0]) + "d," + formatNumber(motion[1]) + "d," + formatNumber(motion[2]) + "d]";
+    }
+
+    private static double[] randomItemMotionValues(Context context) {
+        double x = (context.random().nextDouble() - context.random().nextDouble()) * 0.1;
+        double y = context.random().nextDouble() * 0.05 + 0.2;
+        double z = (context.random().nextDouble() - context.random().nextDouble()) * 0.1;
+        return new double[] {x, y, z};
+    }
+
+    private static String namespaced(String id) {
+        if (id == null || id.isBlank()) {
+            return "minecraft:air";
+        }
+        if (id.startsWith("#randList(") && id.endsWith(")")) {
+            String body = id.substring("#randList(".length(), id.length() - 1);
+            List<String> values = splitTopLevel(body, ',');
+            return namespaced(values.get(new java.util.Random().nextInt(values.size())));
+        }
+        return id.contains(":") ? id : "minecraft:" + id;
+    }
+
+    private static String resolveItemId(String id, Context context) {
+        id = resolveTemplate(id, context);
+        if (id.equals("#randSpawnEgg")) {
+            String[] eggs = {
+                    "minecraft:zombie_spawn_egg",
+                    "minecraft:skeleton_spawn_egg",
+                    "minecraft:creeper_spawn_egg",
+                    "minecraft:spider_spawn_egg",
+                    "minecraft:cow_spawn_egg",
+                    "minecraft:pig_spawn_egg",
+                    "minecraft:sheep_spawn_egg",
+                    "minecraft:chicken_spawn_egg",
+                    "minecraft:villager_spawn_egg",
+                    "minecraft:slime_spawn_egg"
+            };
+            return eggs[context.random().nextInt(eggs.length)];
+        }
+        if (id.equals("#randColor_wool")) {
+            return "minecraft:" + randomColor(context) + "_wool";
+        }
+        if (id.equals("#randColor_terracotta")) {
+            return "minecraft:" + randomColor(context) + "_terracotta";
+        }
+        if (id.equals("#randColor_dye")) {
+            return "minecraft:" + randomColor(context) + "_dye";
+        }
+
+        return namespaced(id);
+    }
+
+    private static String randomColor(Context context) {
+        String[] colors = {
+                "white",
+                "orange",
+                "magenta",
+                "light_blue",
+                "yellow",
+                "lime",
+                "pink",
+                "gray",
+                "light_gray",
+                "cyan",
+                "purple",
+                "blue",
+                "brown",
+                "green",
+                "red",
+                "black"
+        };
+        return colors[context.random().nextInt(colors.length)];
+    }
+
+    private static String resolveTemplate(String value, Context context) {
+        return replaceRandomList(value, context);
+    }
+
+    private static String replaceRandomList(String value, Context context) {
+        String marker = "#randList(";
+        int start = value.indexOf(marker);
+        while (start >= 0) {
+            int bodyStart = start + marker.length();
+            int depth = 1;
+            int end = bodyStart;
+            while (end < value.length() && depth > 0) {
+                char c = value.charAt(end);
+                if (c == '(') {
+                    depth++;
+                } else if (c == ')') {
+                    depth--;
+                }
+                end++;
+            }
+            if (depth != 0) {
+                return value;
+            }
+
+            String body = value.substring(bodyStart, end - 1);
+            List<String> values = splitTopLevel(body, ',');
+            String replacement = values.isEmpty() ? "" : unquote(values.get(context.random().nextInt(values.size())).trim());
+            value = value.substring(0, start) + replacement + value.substring(end);
+            start = value.indexOf(marker, start + replacement.length());
+        }
+
+        return value;
+    }
+
+    private static String convertLegacyCustomName(String value, Context context) {
+        Matcher matcher = Pattern.compile("CustomName=\\((text=[^)]*)\\)").matcher(value);
+        StringBuilder result = new StringBuilder();
+
+        while (matcher.find()) {
+            matcher.appendReplacement(result, Matcher.quoteReplacement("CustomName=" + legacyTextComponent("(" + matcher.group(1) + ")", context)));
+        }
+
+        matcher.appendTail(result);
+        return result.toString();
+    }
+
+    private static String convertJsonCustomNames(String value, Context context) {
+        value = convertJsonCustomNameField(value, "CustomName", context);
+        value = convertJsonCustomNameField(value, "\"minecraft:custom_name\"", context);
+        return value;
+    }
+
+    private static String convertJsonCustomNameField(String value, String fieldName, Context context) {
+        String marker = fieldName + ":";
+        int searchFrom = 0;
+
+        while (true) {
+            int start = value.indexOf(marker, searchFrom);
+            if (start < 0) {
+                return value;
+            }
+
+            int jsonStart = start + marker.length();
+            if (jsonStart >= value.length()) {
+                return value;
+            }
+
+            char first = value.charAt(jsonStart);
+            if (first == '{') {
+                int close = findMatchingBrace(value, jsonStart);
+                if (close < 0) {
+                    return value;
+                }
+
+                String jsonObject = value.substring(jsonStart, close + 1);
+                String converted = convertTextComponentJson(jsonObject, context);
+                if (!converted.equals(jsonObject)) {
+                    value = value.substring(0, jsonStart) + converted + value.substring(close + 1);
+                }
+
+                searchFrom = jsonStart + converted.length();
+                continue;
+            }
+
+            searchFrom = start + marker.length();
+        }
+    }
+
+    private static String convertTextComponentJson(String jsonObject, Context context) {
+        Matcher matcher = Pattern.compile("\"text\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"")
+                .matcher(jsonObject);
+        if (!matcher.find()) {
+            return jsonObject;
+        }
+
+        String text = unescapeJsonString(matcher.group(1));
+        if (!DropMessages.usesFormattedText(text)) {
+            return jsonObject;
+        }
+
+        return DropMessages.toJsonString(text, context.level().registryAccess());
+    }
+
+    private static String unescapeJsonString(String value) {
+        return value
+                .replace("\\\"", "\"")
+                .replace("\\\\", "\\");
+    }
+
+    private static int findMatchingBrace(String value, int openIndex) {
+        int depth = 0;
+        boolean quoted = false;
+
+        for (int index = openIndex; index < value.length(); index++) {
+            char current = value.charAt(index);
+            if (current == '"' && (index == 0 || value.charAt(index - 1) != '\\')) {
+                quoted = !quoted;
+            } else if (!quoted && current == '{') {
+                depth++;
+            } else if (!quoted && current == '}') {
+                depth--;
+                if (depth == 0) {
+                    return index;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private static String convertLegacyComponents(String value, Context context) {
+        String marker = "components=(";
+        int start = value.indexOf(marker);
+        while (start >= 0) {
+            int open = start + "components=".length();
+            int close = findMatchingParen(value, open);
+            if (close < 0) {
+                return value;
+            }
+
+            String body = value.substring(open + 1, close);
+            String replacement = "components=(" + legacyComponentsBody(body, context) + ")";
+            value = value.substring(0, start) + replacement + value.substring(close + 1);
+            start = value.indexOf(marker, start + replacement.length());
+        }
+
+        return value;
+    }
+
+    private static String legacyComponentsBody(String body, Context context) {
+        Map<String, String> props = parseLegacyProps(body);
+        List<String> components = new ArrayList<>();
+
+        String name = props.getOrDefault("custom_name", props.get("display"));
+        if (name != null) {
+            components.add("\"minecraft:custom_name\"=" + legacyTextComponent(name, context));
+        }
+        if (props.containsKey("item_name")) {
+            components.add("\"minecraft:item_name\"=" + legacyTextComponent(props.get("item_name"), context));
+        }
+        if (props.containsKey("enchantments")) {
+            components.add("\"minecraft:enchantments\"=" + enchantmentComponent(props.get("enchantments"), context));
+        }
+        if (props.containsKey("stored_enchantments")) {
+            components.add("\"minecraft:stored_enchantments\"=" + enchantmentComponent(props.get("stored_enchantments"), context));
+        }
+        if (props.containsKey("potion_contents")) {
+            components.add("\"minecraft:potion_contents\"=" + potionContentsComponent(props.get("potion_contents"), context));
+        }
+
+        return String.join(",", components);
+    }
+
+    private static String potionContentsComponent(String rawPotionContents, Context context) {
+        String value = replacePotionEffectTemplates(replaceLegacyTemplates(stripParens(rawPotionContents), context), context);
+        value = namespacePotionIds(value);
+        return "{" + toSnbt(value) + "}";
+    }
+
+    private static String replacePotionEffectTemplates(String value, Context context) {
+        if (value.contains("#randPotion")) {
+            String[] potions = {
+                    "minecraft:fire_resistance",
+                    "minecraft:harming",
+                    "minecraft:healing",
+                    "minecraft:invisibility",
+                    "minecraft:leaping",
+                    "minecraft:night_vision",
+                    "minecraft:poison",
+                    "minecraft:regeneration",
+                    "minecraft:slow_falling",
+                    "minecraft:slowness",
+                    "minecraft:strength",
+                    "minecraft:swiftness",
+                    "minecraft:water_breathing",
+                    "minecraft:weakness"
+            };
+            value = value.replace("#randPotion", "\"" + potions[context.random().nextInt(potions.length)] + "\"");
+        }
+
+        if (value.contains("#luckyPotionEffects")) {
+            value = value.replace("#luckyPotionEffects", randomPotionEffects(true, context.random()));
+        }
+
+        if (value.contains("#unluckyPotionEffects")) {
+            value = value.replace("#unluckyPotionEffects", randomPotionEffects(false, context.random()));
+        }
+
+        return value;
+    }
+
+    private static final String[] POSITIVE_POTION_EFFECTS = {
+            "minecraft:speed",
+            "minecraft:haste",
+            "minecraft:strength",
+            "minecraft:instant_health",
+            "minecraft:jump_boost",
+            "minecraft:regeneration",
+            "minecraft:resistance",
+            "minecraft:fire_resistance",
+            "minecraft:water_breathing",
+            "minecraft:invisibility",
+            "minecraft:night_vision",
+            "minecraft:absorption",
+            "minecraft:saturation",
+            "minecraft:glowing"
+    };
+
+    private static final String[] NEGATIVE_POTION_EFFECTS = {
+            "minecraft:slowness",
+            "minecraft:instant_damage",
+            "minecraft:blindness",
+            "minecraft:hunger",
+            "minecraft:weakness",
+            "minecraft:poison",
+            "minecraft:wither",
+            "minecraft:unluck"
+    };
+
+    private static String randomPotionEffects(boolean positive, RandomSource random) {
+        String[] pool = positive ? POSITIVE_POTION_EFFECTS : NEGATIVE_POTION_EFFECTS;
+        int count = positive ? 7 + random.nextInt(4) : 5 + random.nextInt(3);
+        List<Integer> remaining = new ArrayList<>();
+        for (int index = 0; index < pool.length; index++) {
+            remaining.add(index);
+        }
+
+        StringBuilder effects = new StringBuilder("[");
+        int chosen = 0;
+
+        while (chosen < count && !remaining.isEmpty()) {
+            int pick = random.nextInt(remaining.size());
+            String effectId = pool[remaining.remove(pick)];
+
+            if (chosen > 0) {
+                effects.append(',');
+            }
+            effects.append(randomPotionEffectInstance(effectId, random));
+            chosen++;
+        }
+
+        effects.append(']');
+        return effects.toString();
+    }
+
+    private static String randomPotionEffectInstance(String effectId, RandomSource random) {
+        int amplifier = random.nextInt(4);
+        boolean instant = effectId.contains("instant");
+        int duration = 0;
+
+        if (!instant) {
+            int minDuration = 3200;
+            int maxDuration = 9600;
+            duration = minDuration + random.nextInt(maxDuration - minDuration + 1);
+        }
+
+        return "{id:\"" + effectId + "\",amplifier:" + amplifier + "b,duration:" + duration + ",ambient:0b,show_particles:1b,show_icon:1b}";
+    }
+
+    private static String namespacePotionIds(String value) {
+        Matcher matcher = Pattern.compile("(?<![A-Za-z0-9_])potion=(?:\"([a-z0-9_./:-]+)\"|([a-z0-9_./:-]+))").matcher(value);
+        StringBuilder result = new StringBuilder();
+
+        while (matcher.find()) {
+            String id = matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+            if (!id.contains(":")) {
+                id = "minecraft:" + id;
+            }
+            matcher.appendReplacement(result, Matcher.quoteReplacement("potion=\"" + id + "\""));
+        }
+
+        matcher.appendTail(result);
+        return result.toString();
+    }
+
+    private static String convertLegacyResourceFields(String value) {
+        value = replaceResourceField(value, "id");
+        value = replaceResourceField(value, "Name");
+        value = replaceResourceField(value, "profession");
+        value = replaceResourceField(value, "type");
+        return value;
+    }
+
+    private static String replaceResourceField(String value, String field) {
+        Matcher matcher = Pattern.compile("(?<![A-Za-z0-9_])" + Pattern.quote(field) + "=([a-z0-9_./:-]+)").matcher(value);
+        StringBuilder result = new StringBuilder();
+
+        while (matcher.find()) {
+            String id = matcher.group(1);
+            if (!id.contains(":")) {
+                id = "minecraft:" + id;
+            }
+            matcher.appendReplacement(result, Matcher.quoteReplacement(field + "=\"" + id + "\""));
+        }
+
+        matcher.appendTail(result);
+        return result.toString();
+    }
+
+    private static String convertLegacyBlockStateNames(String value) {
+        Matcher matcher = Pattern.compile("BlockState=\\(Name=([a-z0-9_:.\\-/]+)\\)").matcher(value);
+        StringBuilder result = new StringBuilder();
+
+        while (matcher.find()) {
+            String id = matcher.group(1);
+            if (!id.contains(":")) {
+                id = "minecraft:" + id;
+            }
+            matcher.appendReplacement(result, Matcher.quoteReplacement("BlockState=(Name=\"" + id + "\")"));
+        }
+
+        matcher.appendTail(result);
+        return result.toString();
+    }
+
+    private static String toSnbt(String value) {
+        StringBuilder builder = new StringBuilder();
+        boolean quoted = false;
+
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '"' && (i == 0 || value.charAt(i - 1) != '\\')) {
+                quoted = !quoted;
+                builder.append(c);
+            } else if (!quoted && c == '=') {
+                builder.append(':');
+            } else if (!quoted && c == '(') {
+                builder.append('{');
+            } else if (!quoted && c == ')') {
+                builder.append('}');
+            } else {
+                builder.append(c);
+            }
+        }
+
+        return builder.toString();
+    }
+
+    private static int findMatchingParen(String value, int openIndex) {
+        int depth = 0;
+        boolean quoted = false;
+
+        for (int i = openIndex; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c == '"' && (i == 0 || value.charAt(i - 1) != '\\')) {
+                quoted = !quoted;
+            } else if (!quoted && c == '(') {
+                depth++;
+            } else if (!quoted && c == ')') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private static String unquote(String value) {
+        if (value != null && value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+            return value.substring(1, value.length() - 1);
+        }
+        return value;
+    }
+
+    private static String formatRelative(double value) {
+        if (value == 0.0) {
+            return "~";
+        }
+
+        return "~" + formatNumber(value);
+    }
+
+    private static int getInt(JsonObject object, String key, int fallback, RandomSource random) {
+        return object.has(key) ? (int) Math.round(evaluateNumber(object.get(key), random)) : fallback;
+    }
+
+    private static int getInt(JsonObject object, String key, int fallback, Context context) {
+        if (!object.has(key)) {
+            return fallback;
+        }
+
+        return (int) Math.round(evaluateNumberOrFallback(object.get(key), fallback, context.child("." + key)));
+    }
+
+    private static double getDouble(JsonObject object, String key, double fallback, RandomSource random) {
+        return object.has(key) ? evaluateNumber(object.get(key), random) : fallback;
+    }
+
+    private static double getDouble(JsonObject object, String key, double fallback, Context context) {
+        if (!object.has(key)) {
+            return fallback;
+        }
+
+        return evaluateNumberOrFallback(object.get(key), fallback, context.child("." + key));
+    }
+
+    private static String getString(JsonObject object, String key, String fallback, RandomSource random) {
+        return object.has(key) ? evaluateString(object.get(key), random) : fallback;
+    }
+
+    private static double evaluateNumber(JsonElement element, RandomSource random) {
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
+            return element.getAsDouble();
+        }
+
+        String value = evaluateString(element, random).trim();
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Expected number or #random(x, y), got '" + value + "'", exception);
+        }
+    }
+
+    private static double evaluateNumberOrFallback(JsonElement element, double fallback, Context context) {
+        if (element == null || element.isJsonNull()) {
+            return fallback;
+        }
+
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
+            return element.getAsDouble();
+        }
+
+        String value = evaluateString(element, context).trim();
+        if (value.isEmpty()) {
+            LuckyBlock.LOGGER.warn("Lucky drop {} had empty number at {}; using fallback {}", context.dropId(), context.path(), fallback);
+            return fallback;
+        }
+
+        try {
+            return evaluateArithmeticExpression(value);
+        } catch (NumberFormatException exception) {
+            LuckyBlock.LOGGER.warn("Lucky drop {} had invalid number '{}' at {}; using fallback {}", context.dropId(), value, context.path(), fallback);
+            return fallback;
+        }
+    }
+
+    private static String evaluateString(JsonElement element, Context context) {
+        return replaceLegacyTemplates(replaceRandom(element.getAsString(), context.random()), context);
+    }
+
+    private static String evaluateString(JsonElement element, RandomSource random) {
+        return replaceRandom(element.getAsString(), random);
+    }
+
+    private static String replaceRandom(String value, RandomSource random) {
+        Matcher matcher = RANDOM_PATTERN.matcher(value);
+        StringBuilder result = new StringBuilder();
+
+        while (matcher.find()) {
+            double min = Double.parseDouble(matcher.group(1));
+            double max = Double.parseDouble(matcher.group(2));
+            double rolled = min + random.nextDouble() * (max - min);
+            matcher.appendReplacement(result, Matcher.quoteReplacement(formatNumber(rolled)));
+        }
+
+        matcher.appendTail(result);
+        return result.toString();
+    }
+
+    private static String toCommandValue(JsonElement element, RandomSource random) {
+        if (element.isJsonObject()) {
+            StringBuilder builder = new StringBuilder("{");
+            boolean first = true;
+
+            for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
+                if (!first) {
+                    builder.append(',');
+                }
+                first = false;
+                builder.append(entry.getKey()).append(':').append(toCommandValue(entry.getValue(), random));
+            }
+
+            return builder.append('}').toString();
+        }
+
+        if (element.isJsonArray()) {
+            StringBuilder builder = new StringBuilder("[");
+            boolean first = true;
+
+            for (JsonElement child : element.getAsJsonArray()) {
+                if (!first) {
+                    builder.append(',');
+                }
+                first = false;
+                builder.append(toCommandValue(child, random));
+            }
+
+            return builder.append(']').toString();
+        }
+
+        JsonPrimitive primitive = element.getAsJsonPrimitive();
+        if (primitive.isNumber() || primitive.isBoolean()) {
+            return replaceRandom(primitive.getAsString(), random);
+        }
+
+        String value = replaceRandom(primitive.getAsString(), random);
+        if (value.matches("-?\\d+(?:\\.\\d+)?")) {
+            return value;
+        }
+
+        return quote(value);
+    }
+
+    private static String quote(String value) {
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
+    private static String formatNumber(double value) {
+        if (value == Math.rint(value)) {
+            return Long.toString(Math.round(value));
+        }
+
+        return Double.toString(value);
+    }
+
+    private record Context(
+            Identifier dropId,
+            ServerLevel level,
+            BlockPos pos,
+            Player player,
+            RandomSource random,
+            String path,
+            StructureAnchor structureAnchor,
+            int repeatIndex
+    ) {
+        private static final int NO_REPEAT_INDEX = -1;
+
+        private Context child(String suffix) {
+            return new Context(dropId, level, pos, player, random, path + suffix, structureAnchor, repeatIndex);
+        }
+
+        private Context withRepeatIndex(int index) {
+            return new Context(dropId, level, pos, player, random, path, structureAnchor, index);
+        }
+    }
+
+    private static final class ArithmeticParser {
+        private final String input;
+        private int index;
+
+        private ArithmeticParser(String input) {
+            this.input = input.replaceAll("\\s+", "");
+            this.index = 0;
+        }
+
+        private double parse() {
+            double value = parseExpression();
+            if (index < input.length()) {
+                throw new NumberFormatException("Unexpected trailing input at index " + index);
+            }
+            return value;
+        }
+
+        private double parseExpression() {
+            double value = parseTerm();
+            while (index < input.length()) {
+                char operator = input.charAt(index);
+                if (operator == '+') {
+                    index++;
+                    value += parseTerm();
+                } else if (operator == '-') {
+                    index++;
+                    value -= parseTerm();
+                } else {
+                    break;
+                }
+            }
+            return value;
+        }
+
+        private double parseTerm() {
+            double value = parseUnary();
+            while (index < input.length()) {
+                char operator = input.charAt(index);
+                if (operator == '*') {
+                    index++;
+                    value *= parseUnary();
+                } else if (operator == '/') {
+                    index++;
+                    value /= parseUnary();
+                } else {
+                    break;
+                }
+            }
+            return value;
+        }
+
+        private double parseUnary() {
+            if (index < input.length() && input.charAt(index) == '-') {
+                index++;
+                return -parseUnary();
+            }
+            if (index < input.length() && input.charAt(index) == '+') {
+                index++;
+                return parseUnary();
+            }
+            return parsePrimary();
+        }
+
+        private double parsePrimary() {
+            if (index < input.length() && input.charAt(index) == '(') {
+                index++;
+                double value = parseExpression();
+                if (index >= input.length() || input.charAt(index) != ')') {
+                    throw new NumberFormatException("Missing closing parenthesis");
+                }
+                index++;
+                return value;
+            }
+
+            int start = index;
+            while (index < input.length()) {
+                char character = input.charAt(index);
+                if ((character >= '0' && character <= '9') || character == '.') {
+                    index++;
+                    continue;
+                }
+                break;
+            }
+
+            if (start == index) {
+                throw new NumberFormatException("Expected number at index " + index);
+            }
+
+            return Double.parseDouble(input.substring(start, index));
+        }
+    }
+
+    private record RandomEnchantment(String id, int maxLevel) {
+    }
+}

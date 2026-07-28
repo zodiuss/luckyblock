@@ -1,0 +1,21 @@
+{
+  "luck": -2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "structure": {
+        "type": "cage.nbt",
+        "pos": "#pPos",
+        "centerY": 1,
+        "rotation": "#pDirect"
+      }
+    },
+    {
+      "block": {
+        "type": "minecraft:lava",
+        "pos": "#pPos",
+        "y": "3"
+      }
+    }
+  ]
+}

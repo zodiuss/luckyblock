@@ -1,0 +1,15 @@
+{
+  "luck": -2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "difficulty": "hard"
+    },
+    {
+      "entity": {
+        "type": "minecraft:bat",
+        "nbt": "{Silent:1b,active_effects:[{id:\"minecraft:invisibility\",duration:100000,amplifier:1,show_particles:0b}],Passengers:[{id:\"minecraft:skeleton_horse\",Tame:1b,Passengers:[{id:\"minecraft:skeleton\",equipment:{mainhand:{id:\"minecraft:bow\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:power\":5,\"minecraft:punch\":2,\"minecraft:flame\":1,\"minecraft:infinity\":1}}},feet:{id:\"minecraft:chainmail_boots\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}}},legs:{id:\"minecraft:chainmail_leggings\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}}},chest:{id:\"minecraft:chainmail_chestplate\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}}},head:{id:\"minecraft:chainmail_helmet\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:protection\":4,\"minecraft:unbreaking\":3}}}},drop_chances:{mainhand:0.5f,feet:0.3f,legs:0.3f,chest:0.3f,head:0.3f},CustomName:{\"text\":\"Ghostly Horseman\",\"color\":\"gray\",\"bold\":true},CustomNameVisible:1b}]}]}"
+      }
+    }
+  ]
+}

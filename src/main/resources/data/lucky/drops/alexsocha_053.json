@@ -1,0 +1,29 @@
+{
+  "luck": -1,
+  "weight": 1.0,
+  "drop": {
+    "random": {
+      "amount": "1",
+      "drops": [
+        {
+          "item": {
+            "type": "minecraft:clock",
+            "components": "(custom_name=(text=\"You're wasting your time\",italic=false))"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:tropical_fish",
+            "components": "(custom_name=(text=\"I'm funny\",italic=false))"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:pufferfish",
+            "components": "(custom_name=(text=\"Oooooh!\",italic=true))"
+          }
+        }
+      ]
+    }
+  }
+}

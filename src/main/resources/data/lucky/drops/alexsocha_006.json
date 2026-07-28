@@ -1,0 +1,26 @@
+{
+  "luck": 0,
+  "weight": 1.0,
+  "drop": [
+    {
+      "item": {
+        "type": "minecraft:leather_helmet"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:leather_chestplate"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:leather_leggings"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:leather_boots"
+      }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": {
+    "random": {
+      "amount": "#random(2,3)",
+      "drops": [
+        {
+          "item": {
+            "type": "minecraft:iron_helmet"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:iron_chestplate"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:iron_leggings"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:iron_boots"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:iron_horse_armor"
+          }
+        }
+      ]
+    }
+  }
+}

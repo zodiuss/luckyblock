@@ -1,0 +1,19 @@
+{
+  "luck": -2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "difficulty": "hard"
+    },
+    {
+      "entity": {
+        "type": "minecraft:creeper"
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:lightning_bolt"
+      }
+    }
+  ]
+}

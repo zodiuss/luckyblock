@@ -2,9 +2,10 @@
 
 <p>
 
-<div align="center">
+<div align="center" valign="middle">
 <a href="https://github.com/zodiuss/luckyblock"><img src="assets/buttons/github_icon_bg.png" height="64" alt="GitHub"></a>
 <a href="https://modrinth.com/mod/luckyblock"><img src="assets/buttons/modrinth_icon_bg.png" height="64" alt="Modrinth"></a>
+<a href="https://addons.zodiuss.net"><img src="assets/buttons/create_button.png" height="64" alt="Create Addon"></a>
 </div>
 
 <p>

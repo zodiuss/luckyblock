@@ -25,6 +25,9 @@ import java.util.Optional;
 public class LuckyDropSelector {
     private static final String DROPS_PATH = "drops";
     private static final double LUCK_STRENGTH = 0.77;
+    private static final int ALEXSOCHA_LUCK_LIMIT = 2;
+    private static final int EXTENDED_LUCK_LIMIT = 100;
+    private static final double EXTENDED_TO_ALEXSOCHA_SCALE = 50.0;
 
     public static Optional<LuckyDrop> find(MinecraftServer server, String name) {
         return find(server, name, null);
@@ -84,22 +87,32 @@ public class LuckyDropSelector {
             return Optional.empty();
         }
 
-        int lowestLuck = 0;
-        int highestLuck = 0;
+        // AlexSocha packs traditionally use outcomes from -2 to +2. Preserve
+        // that formula exactly for those packs. Extended packs can author in
+        // the much more expressive -100 to +100 range; map that authoring
+        // scale onto the original five-tier scale before applying the same
+        // exponential weighting equation. Without this normalization, a
+        // single +30 or -50 outcome makes a +/-100 block deterministic.
+        boolean usesExtendedLuck = drops.stream()
+                .anyMatch(drop -> Math.abs(drop.luck()) > ALEXSOCHA_LUCK_LIMIT);
+        double luckScale = usesExtendedLuck ? EXTENDED_TO_ALEXSOCHA_SCALE : 1.0;
+        double lowestLuck = 0.0;
+        double highestLuck = 0.0;
 
         for (LuckyDrop drop : drops) {
-            lowestLuck = Math.min(lowestLuck, drop.luck());
-            highestLuck = Math.max(highestLuck, drop.luck());
+            double scaledLuck = scaledOutcomeLuck(drop.luck(), luckScale);
+            lowestLuck = Math.min(lowestLuck, scaledLuck);
+            highestLuck = Math.max(highestLuck, scaledLuck);
         }
 
-        int luckRange = highestLuck - lowestLuck + 1;
+        double luckRange = highestLuck - lowestLuck + 1.0;
         double luckMagnitude = Math.abs(blockLuck);
         double levelIncrease = 1.0 / (1.0 - (luckMagnitude * LUCK_STRENGTH / 100.0));
         double totalWeight = 0.0;
         List<WeightedDrop> weightedDrops = new ArrayList<>();
 
         for (LuckyDrop drop : drops) {
-            int normalizedLuck = drop.luck() - lowestLuck + 1;
+            double normalizedLuck = scaledOutcomeLuck(drop.luck(), luckScale) - lowestLuck + 1.0;
             double exponent = blockLuck >= 0 ? normalizedLuck : luckRange + 1 - normalizedLuck;
             double adjustedWeight = drop.weight() * Math.pow(levelIncrease, exponent) * 100.0;
             totalWeight += adjustedWeight;
@@ -123,6 +136,11 @@ public class LuckyDropSelector {
         return Optional.of(weightedDrops.getLast().drop());
     }
 
+    private static double scaledOutcomeLuck(int outcomeLuck, double luckScale) {
+        int clampedLuck = Math.max(-EXTENDED_LUCK_LIMIT, Math.min(EXTENDED_LUCK_LIMIT, outcomeLuck));
+        return clampedLuck / luckScale;
+    }
+
     private static List<LuckyDrop> loadSelectableDrops(MinecraftServer server, @Nullable Block block) {
         Optional<LuckyAddon> addon = AddonRegistry.getAddonForBlock(block);
         if (addon.isPresent()) {
@@ -141,9 +159,9 @@ public class LuckyDropSelector {
                     .toList();
         }
 
-        List<LuckyDrop> drops = new ArrayList<>(loadModAllDrops(server));
-        drops.addAll(AddonDropCache.getAllDrops());
-        return drops;
+        // The base Lucky Block owns only the drops packaged by this mod. Addon
+        // drops are deliberately private to their matching addon block.
+        return loadModAllDrops(server);
     }
 
     private static List<LuckyDrop> loadModSelectableDrops(MinecraftServer server) {

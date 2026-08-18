@@ -18,7 +18,16 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.entity.item.PrimedTnt;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -164,9 +173,6 @@ public class LuckyDropExecutor {
         if (action.has("random")) {
             runAction("random", context.child(".random"), () -> random(action.getAsJsonObject("random"), context.child(".random")));
         }
-        if (action.has("group")) {
-            runAction("group", context.child(".group"), () -> group(action.getAsJsonObject("group"), context.child(".group")));
-        }
         if (action.has("fill")) {
             runAction("fill", context.child(".fill"), () -> fill(action.getAsJsonObject("fill"), context.child(".fill")));
         }
@@ -185,11 +191,14 @@ public class LuckyDropExecutor {
         if (action.has("difficulty")) {
             runAction("difficulty", context.child(".difficulty"), () -> runAtBlock("difficulty " + evaluateString(action.get("difficulty"), context.random()), context));
         }
+        if (action.has("effect")) {
+            runAction("effect", context.child(".effect"), () -> applyEffect(action.getAsJsonObject("effect"), context.child(".effect")));
+        }
+        if (action.has("impulse")) {
+            runAction("impulse", context.child(".impulse"), () -> applyImpulse(action.getAsJsonObject("impulse"), context.child(".impulse")));
+        }
         if (action.has("structure")) {
             runAction("structure", context.child(".structure"), () -> structure(action.getAsJsonObject("structure"), context.child(".structure")));
-        }
-        if (action.has("legacy")) {
-            runAction("legacy", context.child(".legacy"), () -> executeLegacy(evaluateString(action.get("legacy"), context.random()), context.child(".legacy")));
         }
     }
 
@@ -495,9 +504,110 @@ public class LuckyDropExecutor {
     }
 
     private static void explosion(JsonObject explosion, Context context) {
+        ServerLevel level = context.level();
         BlockPos origin = actionOrigin(explosion, context);
         int fuse = Math.max(0, getInt(explosion, "fuse", 0, context));
-        runAtBlock("summon minecraft:tnt " + relativePos(explosion, context) + " {Fuse:" + fuse + "}", context, origin);
+        float power = parseExplosionPower(explosion, context);
+        if (!level.getGameRules().get(GameRules.TNT_EXPLODES)) return;
+        Vec3 position = resolveActionPosition(explosion, context);
+        if (fuse == 0) {
+            runExplosion(level, context, position, power);
+        } else if (Math.abs(power - 4.0F) < 0.001F) {
+            PrimedTnt tnt = new PrimedTnt(level, position.x(), position.y(), position.z(), context.player());
+            tnt.setFuse(fuse);
+            level.addFreshEntity(tnt);
+        } else {
+            scheduleDelayed(context, fuse, () -> runExplosion(level, context, position, power));
+        }
+    }
+
+    private static float parseExplosionPower(JsonObject explosion, Context context) {
+        String key = explosion.has("size") ? "size" : "power";
+        float power = (float) getDouble(explosion, key, 4.0, context);
+        if (power <= 0.0F) throw new IllegalArgumentException("explosion " + key + " must be greater than 0");
+        return power;
+    }
+
+    private static void runExplosion(ServerLevel level, Context context, Vec3 position, float power) {
+        level.explode(context.player(), Explosion.getDefaultDamageSource(level, context.player()), null,
+                position.x(), position.y(), position.z(), power, false, Level.ExplosionInteraction.TNT);
+    }
+
+    private static Vec3 resolveActionPosition(JsonObject action, Context context) {
+        BlockPos origin = actionOrigin(action, context);
+        int[] offset = resolvePosOffset(action, context);
+        return new Vec3(origin.getX() + 0.5 + offset[0] + getDouble(action, "x", 0.0, context),
+                origin.getY() + 0.5 + offset[1] + getDouble(action, "y", 0.0, context),
+                origin.getZ() + 0.5 + offset[2] + getDouble(action, "z", 0.0, context));
+    }
+
+    private static void applyEffect(JsonObject effect, Context context) {
+        String rawId = getString(effect, "id", getString(effect, "type", "", context.random()), context.random());
+        if (rawId.isEmpty()) throw new IllegalArgumentException("effect requires id");
+        String id = namespaced(resolveTemplate(rawId, context));
+        MobEffect mobEffect = BuiltInRegistries.MOB_EFFECT.getOptional(Identifier.parse(id))
+                .orElseThrow(() -> new IllegalArgumentException("Unknown effect '" + id + "'"));
+        int duration = Math.max(0, getInt(effect, "duration", 100, context));
+        int amplifier = Math.max(0, getInt(effect, "amplifier", 0, context));
+        var holder = BuiltInRegistries.MOB_EFFECT.wrapAsHolder(mobEffect);
+        for (Entity target : resolveTargets(effect, context)) {
+            if (target instanceof LivingEntity living) living.addEffect(new MobEffectInstance(holder, duration, amplifier));
+        }
+    }
+
+    private static void applyImpulse(JsonObject impulse, Context context) {
+        Vec3 velocity = resolveImpulseVector(impulse, context);
+        for (Entity target : resolveTargets(impulse, context)) {
+            target.setDeltaMovement(target.getDeltaMovement().add(velocity));
+            target.hurtMarked = true;
+        }
+    }
+
+    private static Vec3 resolveImpulseVector(JsonObject impulse, Context context) {
+        if (impulse.has("vector")) {
+            JsonElement vector = impulse.get("vector");
+            if (vector.isJsonArray()) {
+                JsonArray parts = vector.getAsJsonArray();
+                return new Vec3(parts.size() > 0 ? evaluateNumberOrFallback(parts.get(0), 0, context) : 0,
+                        parts.size() > 1 ? evaluateNumberOrFallback(parts.get(1), 0, context) : 0,
+                        parts.size() > 2 ? evaluateNumberOrFallback(parts.get(2), 0, context) : 0);
+            }
+            String rawVector = vector.getAsString().trim();
+            // Resolve a vector calculation directly before falling back to legacy
+            // comma-separated coordinates. This avoids treating the resulting
+            // "[x,y,z]" as a scalar expression when the calculation contains
+            // #pLookVector.
+            if (rawVector.startsWith("#calc(") && rawVector.endsWith(")")) {
+                String expression = applyTemplatesForCalc(rawVector.substring(6, rawVector.length() - 1), context);
+                if (expression.contains("[") || expression.contains("#pLookVector")) {
+                    double[] v = parseVectorExpression(expression, context);
+                    return new Vec3(v[0], v[1], v[2]);
+                }
+            }
+            double[] v = parseLegacyVec3(evaluateString(vector, context), context);
+            return new Vec3(v[0], v[1], v[2]);
+        }
+        return new Vec3(getDouble(impulse, "x", 0, context), getDouble(impulse, "y", 0, context), getDouble(impulse, "z", 0, context));
+    }
+
+    private static List<Entity> resolveTargets(JsonObject action, Context context) {
+        String target = action.has("target") ? action.get("target").getAsString().trim() : action.has("anchor") ? action.get("anchor").getAsString().trim() : "player";
+        String lower = target.toLowerCase(Locale.ROOT);
+        Matcher nearby = Pattern.compile("^#nearby(players|entities)\\((.*)\\)$", Pattern.CASE_INSENSITIVE).matcher(target);
+        if (nearby.matches() && context.player() != null) {
+            double radius = evaluateNumberOrFallback(new JsonPrimitive(nearby.group(2)), 0, context);
+            double clampedRadius = Math.max(0, radius);
+            double radiusSq = clampedRadius * clampedRadius;
+            AABB area = context.player().getBoundingBox().inflate(clampedRadius);
+            if (nearby.group(1).equalsIgnoreCase("players")) {
+                return List.copyOf(context.level().getEntitiesOfClass(net.minecraft.server.level.ServerPlayer.class, area,
+                        p -> p != context.player() && p.distanceToSqr(context.player()) <= radiusSq));
+            }
+            return List.copyOf(context.level().getEntities(context.player(), area,
+                    e -> e.distanceToSqr(context.player()) <= radiusSq));
+        }
+        if ((lower.equals("player") || lower.equals("#ppos")) && context.player() != null) return List.of(context.player());
+        return context.player() != null ? List.of(context.player()) : List.of();
     }
 
     private static void sound(JsonObject sound, Context context) {
@@ -789,7 +899,13 @@ public class LuckyDropExecutor {
 
     private static String relativePos(JsonObject object, Context context) {
         int[] offset = resolvePosOffset(object, context);
-        return formatRelative(offset[0]) + " " + formatRelative(offset[1]) + " " + formatRelative(offset[2]);
+        if (!object.has("posOffset")) {
+            return formatRelative(offset[0]) + " " + formatRelative(offset[1]) + " " + formatRelative(offset[2]);
+        }
+
+        return formatRelative(offset[0] + getDouble(object, "x", 0.0, context)) + " "
+                + formatRelative(offset[1] + getDouble(object, "y", 0.0, context)) + " "
+                + formatRelative(offset[2] + getDouble(object, "z", 0.0, context));
     }
 
     private static int[] parsePlayerOffset(String offset, @Nullable Player player) {
@@ -1032,8 +1148,13 @@ public class LuckyDropExecutor {
             }
 
             String resolved = applyTemplatesForCalc(body, context);
-            double result = evaluateArithmeticExpression(resolved);
-            value = value.substring(0, start) + formatNumber(result) + value.substring(close + 1);
+            String result;
+            if (resolved.contains("[") || resolved.contains("#pLookVector")) {
+                result = formatMotionVector(parseVectorExpression(resolved, context));
+            } else {
+                result = formatNumber(evaluateArithmeticExpression(resolved));
+            }
+            value = value.substring(0, start) + result + value.substring(close + 1);
             start = value.indexOf("#calc(");
         }
 
@@ -1047,6 +1168,85 @@ public class LuckyDropExecutor {
         }
         return value.trim();
     }
+
+    private static double[] parseVectorExpression(String expression, Context context) {
+        return new VectorExpressionParser(expression, context).parse();
+    }
+
+    private static String formatMotionVector(double[] vector) {
+        return "[" + formatNumber(vector[0]) + "," + formatNumber(vector[1]) + "," + formatNumber(vector[2]) + "]";
+    }
+
+    private static final class VectorExpressionParser {
+        private final String input;
+        private final Context context;
+        private int index;
+
+        private VectorExpressionParser(String input, Context context) { this.input = input; this.context = context; }
+
+        private double[] parse() {
+            double[] value = expression();
+            whitespace();
+            if (index != input.length()) throw new IllegalArgumentException("Unexpected vector input at " + index);
+            return value;
+        }
+
+        private double[] expression() {
+            double[] value = term();
+            while (true) {
+                whitespace();
+                if (consume('+')) value = add(value, term());
+                else if (consume('-')) value = subtract(value, term());
+                else return value;
+            }
+        }
+
+        private double[] term() {
+            double[] value = primary();
+            while (true) {
+                whitespace();
+                if (!consume('*')) return value;
+                value = scaleLookVector(value, scalar());
+            }
+        }
+
+        private double[] primary() {
+            whitespace();
+            if (consume('(')) { double[] value = expression(); expect(')'); return value; }
+            if (input.startsWith("#pLookVector", index)) {
+                index += "#pLookVector".length();
+                Vec3 look = context.player() == null ? Vec3.ZERO : context.player().getLookAngle();
+                return new double[] {look.x, look.y, look.z};
+            }
+            expect('[');
+            double x = scalar(); expect(',');
+            double y = scalar(); expect(',');
+            double z = scalar(); expect(']');
+            return new double[] {x, y, z};
+        }
+
+        private double scalar() {
+            whitespace(); int start = index; int depth = 0;
+            while (index < input.length()) {
+                char c = input.charAt(index);
+                if (c == '(') depth++;
+                if (c == ')') { if (depth == 0) break; depth--; }
+                if (depth == 0 && (c == ',' || c == ']' || c == '+' || c == '*' || (c == '-' && index > start))) break;
+                index++;
+            }
+            String value = input.substring(start, index).trim();
+            if (value.isEmpty()) throw new IllegalArgumentException("Expected scalar at " + start);
+            return evaluateArithmeticExpression(value);
+        }
+
+        private void whitespace() { while (index < input.length() && Character.isWhitespace(input.charAt(index))) index++; }
+        private boolean consume(char expected) { whitespace(); if (index < input.length() && input.charAt(index) == expected) { index++; return true; } return false; }
+        private void expect(char expected) { if (!consume(expected)) throw new IllegalArgumentException("Expected '" + expected + "' at " + index); }
+    }
+
+    private static double[] add(double[] a, double[] b) { return new double[] {a[0] + b[0], a[1] + b[1], a[2] + b[2]}; }
+    private static double[] subtract(double[] a, double[] b) { return new double[] {a[0] - b[0], a[1] - b[1], a[2] - b[2]}; }
+    private static double[] scaleLookVector(double[] v, double scalar) { return new double[] {v[0] * scalar, v[1] * scalar, v[2] * scalar}; }
 
     private static double[] randomCircleOffset(String value, Context context) {
         return randomCircleOffset(value, context.random());

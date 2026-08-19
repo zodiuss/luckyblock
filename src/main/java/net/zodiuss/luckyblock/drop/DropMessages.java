@@ -13,7 +13,17 @@ import net.zodiuss.luckyblock.LuckyBlock;
 import java.util.Map;
 
 public final class DropMessages {
-    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+    private static final MiniMessage MINI_MESSAGE;
+
+    static {
+        MiniMessage instance = null;
+        try {
+            instance = MiniMessage.miniMessage();
+        } catch (Throwable throwable) {
+            LuckyBlock.LOGGER.warn("Failed to initialize MiniMessage; adventure will fall back to plain text", throwable);
+        }
+        MINI_MESSAGE = instance;
+    }
 
     private static final Map<Character, String> LEGACY_COLOR_TAGS = Map.ofEntries(
             Map.entry('0', "<black>"),
@@ -47,11 +57,14 @@ public final class DropMessages {
     }
 
     public static Component parse(String message, RegistryAccess registryAccess) {
+        if (MINI_MESSAGE == null) {
+            return Component.literal(message);
+        }
         try {
             String prepared = convertLegacyDollarCodes(message);
             net.kyori.adventure.text.Component adventure = MINI_MESSAGE.deserialize(prepared);
             return fromAdventure(adventure, registryAccess);
-        } catch (RuntimeException exception) {
+        } catch (Throwable exception) {
             LuckyBlock.LOGGER.warn("Failed to parse lucky drop message '{}'; using plain text", message, exception);
             return Component.literal(message);
         }
@@ -96,9 +109,15 @@ public final class DropMessages {
     }
 
     private static Component fromAdventure(net.kyori.adventure.text.Component adventure, RegistryAccess registryAccess) {
-        var json = JsonParser.parseString(GsonComponentSerializer.gson().serialize(adventure));
-        return ComponentSerialization.CODEC
-                .parse(RegistryOps.create(JsonOps.INSTANCE, registryAccess), json)
-                .getOrThrow(error -> new IllegalStateException("Invalid message component: " + error));
+        try {
+            var json = JsonParser.parseString(GsonComponentSerializer.gson().serialize(adventure));
+            return ComponentSerialization.CODEC
+                    .parse(RegistryOps.create(JsonOps.INSTANCE, registryAccess), json)
+                    .getOrThrow(error -> new IllegalStateException("Invalid message component: " + error));
+        } catch (Throwable throwable) {
+            LuckyBlock.LOGGER.warn("Failed to convert adventure component; using plain text", throwable);
+            // Fall back to a plain literal if Gson serialization is unavailable
+            return Component.literal(adventure.toString());
+        }
     }
 }

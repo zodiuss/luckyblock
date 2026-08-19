@@ -3,15 +3,10 @@
 	"id": "lucky",
 	"version": "${version}",
 	"name": "Lucky Block",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Modern implementation of the classic lucky block mod: break the lucky block, get something random. Easily create your own lucky blocks",
 	"authors": [
 		"zodiuss"
 	],
-	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
-	},
-	"license": "CC0-1.0",
 	"icon": "assets/lucky/icon.png",
 	"environment": "*",
 	"entrypoints": {

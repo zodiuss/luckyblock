@@ -1,0 +1,10 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": {
+    "item": {
+      "type": "minecraft:rabbit_stew",
+      "amount": "#random(5,7)"
+    }
+  }
+}

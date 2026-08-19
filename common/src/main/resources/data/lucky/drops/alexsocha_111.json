@@ -1,0 +1,10 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": {
+    "item": {
+      "type": "minecraft:splash_potion",
+      "components": "(potion_contents=(potion=\"minecraft:harming\",custom_effects=#unluckyPotionEffects),custom_name=(text=\"Evil Potion\",color=dark_red,bold=true,italic=false))"
+    }
+  }
+}

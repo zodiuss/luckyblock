@@ -1,0 +1,45 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "structure": {
+        "type": "lucky_buildings/fort.nbt",
+        "pos": "#pPos",
+        "centerY": 1
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "pos": "#pPos",
+        "x": 1,
+        "z": 1
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "pos": "#pPos",
+        "x": 1,
+        "z": -1
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "pos": "#pPos",
+        "x": -1,
+        "z": 1
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "pos": "#pPos",
+        "x": -1,
+        "z": -1
+      }
+    }
+  ]
+}

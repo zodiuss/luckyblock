@@ -1,0 +1,136 @@
+{
+  "luck": -2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "item": {
+        "type": "minecraft:wooden_sword"
+      }
+    },
+    {
+      "difficulty": "hard"
+    },
+    {
+      "time": "18750"
+    },
+    {
+      "command": "effect give @p minecraft:slowness 30 4"
+    },
+    {
+      "command": "effect give @p minecraft:blindness 30 0"
+    },
+    {
+      "random": {
+        "amount": "1",
+        "drops": [
+          {
+            "entity": {
+              "type": "minecraft:zombie",
+              "posOffset": "#circleOffset(8,10)",
+              "amount": "#random(20,50)"
+            }
+          },
+          {
+            "entity": {
+              "type": "minecraft:creeper",
+              "posOffset": "#circleOffset(8,10)",
+              "amount": "#random(10,30)"
+            }
+          },
+          [
+            {
+              "entity": {
+                "type": "minecraft:spider",
+                "posOffset": "#circleOffset(8,10)",
+                "amount": "#random(15,45)"
+              }
+            },
+            {
+              "entity": {
+                "type": "minecraft:cave_spider",
+                "posOffset": "#circleOffset(8,10)",
+                "amount": "#random(5,10)"
+              }
+            }
+          ],
+          [
+            {
+              "entity": {
+                "type": "minecraft:silverfish",
+                "posOffset": "#circleOffset(8,10)",
+                "amount": "#random(15,45)"
+              }
+            },
+            {
+              "entity": {
+                "type": "minecraft:endermite",
+                "posOffset": "#circleOffset(8,10)",
+                "amount": "#random(5,10)"
+              }
+            }
+          ],
+          {
+            "entity": {
+              "type": "minecraft:guardian",
+              "posOffset": "#circleOffset(8,10)",
+              "amount": "#random(10,30)"
+            }
+          },
+          [
+            {
+              "entity": {
+                "type": "minecraft:zombie",
+                "posOffset": "#circleOffset(8,10)",
+                "amount": "#random(20,50)"
+              }
+            },
+            {
+              "entity": {
+                "type": "minecraft:creeper",
+                "posOffset": "#circleOffset(8,10)",
+                "amount": "#random(10,30)"
+              }
+            },
+            [
+              {
+                "entity": {
+                  "type": "minecraft:spider",
+                  "posOffset": "#circleOffset(8,10)",
+                  "amount": "#random(15,45)"
+                }
+              },
+              {
+                "entity": {
+                  "type": "minecraft:cave_spider",
+                  "posOffset": "#circleOffset(8,10)",
+                  "amount": "#random(5,10)"
+                }
+              },
+              {
+                "entity": {
+                  "type": "minecraft:silverfish",
+                  "posOffset": "#circleOffset(8,10)",
+                  "amount": "#random(15,45)"
+                }
+              },
+              {
+                "entity": {
+                  "type": "minecraft:endermite",
+                  "posOffset": "#circleOffset(8,10)",
+                  "amount": "#random(5,10)"
+                }
+              },
+              {
+                "entity": {
+                  "type": "minecraft:guardian",
+                  "posOffset": "#circleOffset(8,10)",
+                  "amount": "#random(10,30)"
+                }
+              }
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

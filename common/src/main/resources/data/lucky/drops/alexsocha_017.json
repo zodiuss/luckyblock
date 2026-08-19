@@ -1,0 +1,10 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": {
+    "item": {
+      "type": "minecraft:end_portal_frame",
+      "amount": "#random(2,6)"
+    }
+  }
+}

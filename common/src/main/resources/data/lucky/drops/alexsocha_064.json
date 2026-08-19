@@ -1,0 +1,14 @@
+{
+  "luck": -2,
+  "weight": 0.1,
+  "drop": [
+    {
+      "difficulty": "hard"
+    },
+    {
+      "entity": {
+        "type": "minecraft:wither"
+      }
+    }
+  ]
+}

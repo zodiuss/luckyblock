@@ -1,0 +1,36 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": {
+    "random": {
+      "amount": "#random(2,3)",
+      "drops": [
+        {
+          "item": {
+            "type": "minecraft:iron_shovel"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:iron_pickaxe"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:iron_axe"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:iron_sword"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:iron_hoe"
+          }
+        }
+      ]
+    }
+  }
+}

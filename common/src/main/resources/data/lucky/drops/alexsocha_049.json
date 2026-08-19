@@ -1,0 +1,37 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": [
+    {
+      "random": {
+        "amount": "1",
+        "drops": [
+          {
+            "item": {
+              "type": "#randColor_wool",
+              "amount": "#random(32,64)"
+            }
+          },
+          {
+            "item": {
+              "type": "#randColor_terracotta",
+              "amount": "#random(32,64)"
+            }
+          },
+          {
+            "item": {
+              "type": "#randColor_dye",
+              "amount": "#random(32,64)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "particle": {
+        "type": "minecraft:splashpotion",
+        "amount": "1"
+      }
+    }
+  ]
+}

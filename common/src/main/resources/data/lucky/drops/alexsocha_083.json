@@ -1,0 +1,26 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": [
+    {
+      "fill": {
+        "type": "minecraft:air",
+        "xSize": "1",
+        "ySize": "8",
+        "zSize": "1"
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:falling_block",
+        "y": "0+7",
+        "nbt": "{BlockState:{Name:\"minecraft:diamond_block\"},Time:1}"
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:lightning_bolt"
+      }
+    }
+  ]
+}

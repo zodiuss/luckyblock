@@ -1,0 +1,31 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": [
+    {
+      "item": {
+        "type": "minecraft:golden_helmet"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:golden_chestplate"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:golden_leggings"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:golden_boots"
+      }
+    },
+    {
+      "item": {
+        "type": "minecraft:golden_horse_armor"
+      }
+    }
+  ]
+}

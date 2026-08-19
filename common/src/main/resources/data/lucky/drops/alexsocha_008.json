@@ -1,0 +1,31 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": {
+    "random": {
+      "amount": "#random(2,3)",
+      "drops": [
+        {
+          "item": {
+            "type": "minecraft:chainmail_helmet"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:chainmail_chestplate"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:chainmail_leggings"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:chainmail_boots"
+          }
+        }
+      ]
+    }
+  }
+}

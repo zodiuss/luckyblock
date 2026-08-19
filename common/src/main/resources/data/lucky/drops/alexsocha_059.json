@@ -1,0 +1,20 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "entity": {
+        "type": "minecraft:egg",
+        "amount": "40",
+        "nbt": "{Motion:[0.0d,0.7d,0.0d]{0.6,15}}"
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:item",
+        "amount": "20",
+        "nbt": "{Item:{id:\"minecraft:diamond\",count:1},Motion:[0.0d,0.7d,0.0d]{0.7,18}}"
+      }
+    }
+  ]
+}

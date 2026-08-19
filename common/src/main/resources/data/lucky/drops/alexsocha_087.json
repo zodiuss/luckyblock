@@ -1,0 +1,86 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "fill": {
+        "type": "minecraft:air",
+        "xSize": "1",
+        "ySize": "51",
+        "zSize": "1"
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:falling_block",
+        "y": "0+5",
+        "nbt": "{BlockState:{Name:\"minecraft:redstone_block\"},Time:1}"
+      }
+    },
+    [
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+10",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      },
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+15",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      },
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+20",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      },
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+25",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      },
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+30",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      },
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+35",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      },
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+40",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      },
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+45",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      },
+      {
+        "entity": {
+          "type": "minecraft:falling_block",
+          "y": "0+50",
+          "nbt": "{BlockState:{Name:\"minecraft:tnt\"},Time:1}"
+        }
+      }
+    ]
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": {
+    "entity": {
+      "type": "minecraft:sheep",
+      "posOffset": "#circleOffset(4)",
+      "amount": "16",
+      "nbt": "{CustomName:{\"text\":\"<rainbow>Mr. Rainbow\"},CustomNameVisible:1b,Color:#random(0,15)}"
+    }
+  }
+}

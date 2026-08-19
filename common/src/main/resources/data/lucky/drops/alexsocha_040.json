@@ -1,0 +1,95 @@
+{
+  "luck": 1,
+  "weight": 1.0,
+  "drop": {
+    "random": {
+      "amount": "1",
+      "drops": [
+        [
+          {
+            "item": {
+              "type": "minecraft:porkchop",
+              "amount": "#random(8,16)"
+            }
+          },
+          {
+            "item": {
+              "type": "minecraft:cooked_porkchop",
+              "amount": "#random(4,8)"
+            }
+          }
+        ],
+        [
+          {
+            "item": {
+              "type": "minecraft:salmon",
+              "amount": "#random(8,16)"
+            }
+          },
+          {
+            "item": {
+              "type": "minecraft:cooked_salmon",
+              "amount": "#random(4,8)"
+            }
+          }
+        ],
+        [
+          {
+            "item": {
+              "type": "minecraft:beef",
+              "amount": "#random(8,16)"
+            }
+          },
+          {
+            "item": {
+              "type": "minecraft:cooked_beef",
+              "amount": "#random(4,8)"
+            }
+          }
+        ],
+        [
+          {
+            "item": {
+              "type": "minecraft:chicken",
+              "amount": "#random(8,16)"
+            }
+          },
+          {
+            "item": {
+              "type": "minecraft:cooked_chicken",
+              "amount": "#random(4,8)"
+            }
+          }
+        ],
+        [
+          {
+            "item": {
+              "type": "minecraft:mutton",
+              "amount": "#random(8,16)"
+            }
+          },
+          {
+            "item": {
+              "type": "minecraft:cooked_mutton",
+              "amount": "#random(4,8)"
+            }
+          }
+        ],
+        [
+          {
+            "item": {
+              "type": "minecraft:rabbit",
+              "amount": "#random(8,16)"
+            }
+          },
+          {
+            "item": {
+              "type": "minecraft:cooked_rabbit",
+              "amount": "#random(4,8)"
+            }
+          }
+        ]
+      ]
+    }
+  }
+}

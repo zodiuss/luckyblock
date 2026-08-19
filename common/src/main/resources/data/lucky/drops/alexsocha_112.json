@@ -1,0 +1,9 @@
+{
+  "luck": 2,
+  "weight": 1.5,
+  "drop": {
+    "item": {
+      "type": "lucky:lucky_sword"
+    }
+  }
+}

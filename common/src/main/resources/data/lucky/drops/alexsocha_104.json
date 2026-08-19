@@ -1,0 +1,109 @@
+{
+  "luck": -2,
+  "weight": 1.0,
+  "drop": [
+    {
+      "structure": {
+        "type": "giant_blocks/lucky_block.nbt",
+        "centerZ": 7,
+        "rotation": "#pDirect"
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "posOffset": "#sPos(4,3,6)",
+        "customDrop": {
+          "drop": [
+            {
+              "delay": 0,
+              "block": {
+                "type": "minecraft:air",
+                "pos": "#sCenter(4,3,6)",
+                "posOffset": "#sPos(4,3,8)"
+              }
+            },
+            {
+              "delay": 0,
+              "structure": {
+                "type": "giant_blocks/break_stage_1.nbt",
+                "pos": "#sCenter(4,3,6)",
+                "centerZ": 7,
+                "blockMode": "overlay",
+                "rotation": "#sRotation"
+              }
+            },
+            {
+              "delay": 10,
+              "structure": {
+                "type": "giant_blocks/break_stage_2.nbt",
+                "pos": "#sCenter(4,3,6)",
+                "centerZ": 7,
+                "blockMode": "overlay",
+                "rotation": "#sRotation"
+              }
+            },
+            {
+              "delay": 20,
+              "structure": {
+                "type": "giant_blocks/break_stage_3.nbt",
+                "pos": "#sCenter(4,3,6)",
+                "centerZ": 7,
+                "blockMode": "overlay",
+                "rotation": "#sRotation"
+              }
+            },
+            {
+              "delay": 30,
+              "structure": {
+                "type": "giant_blocks/break_stage_4.nbt",
+                "pos": "#sCenter(4,3,6)",
+                "centerZ": 7,
+                "blockMode": "overlay",
+                "rotation": "#sRotation"
+              }
+            },
+            {
+              "delay": 40,
+              "structure": {
+                "type": "giant_blocks/break_stage_5.nbt",
+                "pos": "#sCenter(4,3,6)",
+                "centerZ": 7,
+                "blockMode": "overlay",
+                "rotation": "#sRotation"
+              }
+            },
+            {
+              "delay": 50,
+              "fill": {
+                "type": "minecraft:air",
+                "pos": "#sCenter(4,3,6)",
+                "posOffset": "#sPos(0,0,0)",
+                "xSize": 8,
+                "ySize": 8,
+                "zSize": 8
+              }
+            },
+            {
+              "delay": 50,
+              "entity": {
+                "type": "minecraft:tnt",
+                "pos": "#sCenter(4,3,6)",
+                "posOffset": "#sPos(4,4,4)",
+                "amount": 30,
+                "nbt": "{Fuse:50,Motion:#randLaunchMotion}"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "block": {
+        "type": "minecraft:lever",
+        "state": "[face=wall,facing=#pLeverFacing,powered=false]",
+        "posOffset": "#sPos(4,3,8)"
+      }
+    }
+  ]
+}

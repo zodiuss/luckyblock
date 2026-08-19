@@ -1,0 +1,11 @@
+{
+  "luck": -2,
+  "weight": 1.0,
+  "drop": {
+    "entity": {
+      "type": "minecraft:tnt",
+      "amount": "15",
+      "nbt": "{Fuse:50b,Motion:[0.0d,0.7d,0.0d]}"
+    }
+  }
+}

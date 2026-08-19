@@ -1,0 +1,45 @@
+{
+  "luck": 2,
+  "weight": 0.4,
+  "drop": [
+    {
+      "structure": {
+        "type": "lucky_buildings/temple.nbt",
+        "pos": "#pPos",
+        "centerY": 1
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "pos": "#pPos",
+        "x": 2,
+        "z": 2
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "pos": "#pPos",
+        "x": 2,
+        "z": -2
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "pos": "#pPos",
+        "x": -2,
+        "z": 2
+      }
+    },
+    {
+      "block": {
+        "type": "lucky:lucky_block",
+        "pos": "#pPos",
+        "x": -2,
+        "z": -2
+      }
+    }
+  ]
+}

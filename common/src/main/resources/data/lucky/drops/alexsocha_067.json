@@ -1,0 +1,15 @@
+{
+  "luck": -1,
+  "weight": 1.0,
+  "drop": [
+    {
+      "difficulty": "hard"
+    },
+    {
+      "entity": {
+        "type": "minecraft:rabbit",
+        "nbt": "{RabbitType:99}"
+      }
+    }
+  ]
+}

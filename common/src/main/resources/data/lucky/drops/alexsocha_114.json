@@ -1,0 +1,11 @@
+{
+  "luck": 2,
+  "weight": 1.5,
+  "drop": {
+    "item": {
+      "type": "lucky:lucky_potion",
+      "amount": "#random(10,15)",
+      "components": "(lucky:luck=#randList(100,-100))"
+    }
+  }
+}

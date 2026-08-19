@@ -1,0 +1,23 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": {
+    "random": {
+      "amount": "1",
+      "drops": [
+        {
+          "item": {
+            "type": "minecraft:crossbow",
+            "components": "(enchantments=#luckyCrossbowEnchantments,custom_name=(text=\"Hero's Crossbow\",color=blue,bold=true,italic=false))"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:trident",
+            "components": "(enchantments=#luckyTridentEnchantments,custom_name=(text=\"Hero's Trident\",color=blue,bold=true,italic=false))"
+          }
+        }
+      ]
+    }
+  }
+}

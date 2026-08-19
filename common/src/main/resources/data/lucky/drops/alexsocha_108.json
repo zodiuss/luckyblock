@@ -1,0 +1,41 @@
+{
+  "luck": 2,
+  "weight": 1.0,
+  "drop": {
+    "random": {
+      "amount": "#random(1,2)",
+      "drops": [
+        {
+          "item": {
+            "type": "minecraft:diamond_shovel",
+            "components": "(enchantments=#luckyToolEnchantments,custom_name=(text=\"Hero's Shovel\",color=blue,bold=true,italic=false))"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:diamond_pickaxe",
+            "components": "(enchantments=#luckyToolEnchantments,custom_name=(text=\"Hero's Pickaxe\",color=blue,bold=true,italic=false))"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:diamond_axe",
+            "components": "(enchantments=#luckyAxeEnchantments,custom_name=(text=\"Hero's Axe\",color=blue,bold=true,italic=false))"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:diamond_hoe",
+            "components": "(enchantments=#luckyToolEnchantments,custom_name=(text=\"Hero's Hoe\",color=blue,bold=true,italic=false))"
+          }
+        },
+        {
+          "item": {
+            "type": "minecraft:fishing_rod",
+            "components": "(enchantments=#luckyFishingRodEnchantments,custom_name=(text=\"Hero's Fishing Rod\",color=blue,bold=true,italic=false))"
+          }
+        }
+      ]
+    }
+  }
+}

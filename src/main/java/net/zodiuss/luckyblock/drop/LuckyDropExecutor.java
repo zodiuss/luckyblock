@@ -34,6 +34,9 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.world.item.component.CustomData;
 import net.zodiuss.luckyblock.LuckyBlock;
 import net.zodiuss.luckyblock.component.CustomDropData;
 import net.zodiuss.luckyblock.component.ModComponents;
@@ -152,57 +155,10 @@ public class LuckyDropExecutor {
     }
 
     private static void executeActionObject(JsonObject action, Context context) {
-        if (action.has("message")) {
-            runAction("message", context.child(".message"), () -> sendMessage(action, context));
-        }
-        if (action.has("command")) {
-            runAction("command", context.child(".command"), () -> runCommand(action, context));
-        }
-        if (action.has("item")) {
-            runAction("item", context.child(".item"), () -> dropItem(action.getAsJsonObject("item"), context.child(".item")));
-        }
-        if (action.has("block")) {
-            runAction("block", context.child(".block"), () -> setBlock(action.getAsJsonObject("block"), context.child(".block")));
-        }
-        if (action.has("entity")) {
-            runAction("entity", context.child(".entity"), () -> summonEntity(action.getAsJsonObject("entity"), context.child(".entity")));
-        }
-        if (action.has("repeat")) {
-            runAction("repeat", context.child(".repeat"), () -> repeat(action.getAsJsonObject("repeat"), context.child(".repeat")));
-        }
-        if (action.has("random")) {
-            runAction("random", context.child(".random"), () -> random(action.getAsJsonObject("random"), context.child(".random")));
-        }
-        if (action.has("fill")) {
-            runAction("fill", context.child(".fill"), () -> fill(action.getAsJsonObject("fill"), context.child(".fill")));
-        }
-        if (action.has("explosion")) {
-            runAction("explosion", context.child(".explosion"), () -> explosion(action.getAsJsonObject("explosion"), context.child(".explosion")));
-        }
-        if (action.has("sound")) {
-            runAction("sound", context.child(".sound"), () -> sound(action.getAsJsonObject("sound"), context.child(".sound")));
-        }
-        if (action.has("particle")) {
-            runAction("particle", context.child(".particle"), () -> particle(action.getAsJsonObject("particle"), context.child(".particle")));
-        }
-        if (action.has("time")) {
-            runAction("time", context.child(".time"), () -> runAtBlock("time set " + evaluateString(action.get("time"), context.random()), context));
-        }
-        if (action.has("difficulty")) {
-            runAction("difficulty", context.child(".difficulty"), () -> runAtBlock("difficulty " + evaluateString(action.get("difficulty"), context.random()), context));
-        }
-        if (action.has("effect")) {
-            runAction("effect", context.child(".effect"), () -> applyEffect(action.getAsJsonObject("effect"), context.child(".effect")));
-        }
-        if (action.has("impulse")) {
-            runAction("impulse", context.child(".impulse"), () -> applyImpulse(action.getAsJsonObject("impulse"), context.child(".impulse")));
-        }
-        if (action.has("structure")) {
-            runAction("structure", context.child(".structure"), () -> structure(action.getAsJsonObject("structure"), context.child(".structure")));
-        }
+        net.zodiuss.luckyblock.drop.handler.DropActionRegistry.dispatch(action, context);
     }
 
-    private static void scheduleDelayed(Context context, int ticks, Runnable runnable) {
+    static void scheduleDelayed(Context context, int ticks, Runnable runnable) {
         long executeAt = context.level().getGameTime() + ticks;
         LuckyDropScheduler.schedule(context.level(), executeAt, () -> {
             try {
@@ -213,7 +169,7 @@ public class LuckyDropExecutor {
         });
     }
 
-    private static void runAction(String action, Context context, Runnable runnable) {
+    public static void runAction(String action, Context context, Runnable runnable) {
         try {
             runnable.run();
         } catch (RuntimeException exception) {
@@ -221,7 +177,7 @@ public class LuckyDropExecutor {
         }
     }
 
-    private static void sendMessage(JsonObject action, Context context) {
+    public static void sendMessage(JsonObject action, Context context) {
         broadcastMessage(context, evaluateString(action.get("message"), context));
     }
 
@@ -230,37 +186,63 @@ public class LuckyDropExecutor {
         context.level().getServer().getPlayerList().broadcastSystemMessage(component, false);
     }
 
-    private static void runCommand(JsonObject action, Context context) {
+    public static void runCommand(JsonObject action, Context context) {
         String command = evaluateString(action.get("command"), context);
         runAtBlock(command, context, actionOrigin(action, context));
     }
 
-    private static void dropItem(JsonObject item, Context context) {
-        BlockPos origin = actionOrigin(item, context);
+    public static void dropItem(JsonObject item, Context context) {
         String id = resolveItemId(getString(item, "type", getString(item, "id", "minecraft:air", context.random()), context.random()), context);
         int amount = Math.max(1, getInt(item, "amount", 1, context));
-        String pos = relativePos(item, context);
         String components = item.has("components")
                 ? toItemComponents(evaluateString(item.get("components"), context.random()), context)
                 : "";
-        String nbt = item.has("nbt")
-                ? "," + rawCommandValue(item.get("nbt"), context).replaceFirst("^\\{", "").replaceFirst("}$", "")
-                : "";
-        if (!nbt.isEmpty()) {
-            int remaining = amount;
-            int maxStackSize = maxStackSize(id);
-            while (remaining > 0) {
-                int stackSize = Math.min(remaining, maxStackSize);
-                runAtBlock("summon minecraft:item " + pos + " {Item:{id:\"" + id + components + "\",count:" + stackSize + nbt + "},Motion:" + randomItemMotion(context) + "}", context, origin);
-                remaining -= stackSize;
-            }
-            return;
+        String itemString = id + components;
+        String nbtRaw = null;
+        if (item.has("nbt")) {
+            nbtRaw = evaluateString(item.get("nbt"), context.random());
+            nbtRaw = legacyNbtBody(nbtRaw, context);
         }
-
-        spawnParsedItem(id + components, amount, item, context);
+        spawnItemDirect(itemString, nbtRaw, amount, item, context);
     }
 
-    private static void setBlock(JsonObject block, Context context) {
+    public static void spawnItemDirect(String itemString, String nbtRaw, int amount, JsonObject item, Context context) {
+        try {
+            BlockPos origin = actionOrigin(item, context);
+            int[] offset = resolvePosOffset(item, context);
+            double x = origin.getX() + 0.5 + offset[0] + getDouble(item, "x", 0.0, context);
+            double y = origin.getY() + 0.5 + offset[1] + getDouble(item, "y", 0.0, context);
+            double z = origin.getZ() + 0.5 + offset[2] + getDouble(item, "z", 0.0, context);
+            ItemStack baseStack = new ItemParser(context.level().registryAccess()).parse(new StringReader(itemString)).createItemStack(1);
+            if (nbtRaw != null && !nbtRaw.isBlank()) {
+                try {
+                    CompoundTag tag = TagParser.parseCompoundFully(nbtRaw);
+                    if (!tag.isEmpty()) {
+                        // Preserve arbitrary NBT as CustomData so no intended feature is lost.
+                        // Known component mappings (enchantments, display, etc.) are already handled
+                        // via the 'components' field; raw 'nbt' is kept as CustomData for addons
+                        // that rely on legacy tag passthrough.
+                        baseStack.set(net.minecraft.core.component.DataComponents.CUSTOM_DATA, CustomData.of(tag));
+                    }
+                } catch (CommandSyntaxException e) {
+                    LuckyBlock.LOGGER.warn("Failed to parse item nbt '{}' at {}: {}", nbtRaw, context.path(), e.getMessage());
+                }
+            }
+            int remaining = amount;
+            while (remaining > 0) {
+                int stackSize = Math.min(remaining, baseStack.getMaxStackSize());
+                ItemStack stack = baseStack.copyWithCount(stackSize);
+                double[] motion = randomItemMotionValues(context);
+                ItemEntity entity = new ItemEntity(context.level(), x, y, z, stack, motion[0], motion[1], motion[2]);
+                context.level().addFreshEntity(entity);
+                remaining -= stackSize;
+            }
+        } catch (CommandSyntaxException | RuntimeException exception) {
+            logFailure("parse item '" + itemString + "'", context, exception instanceof RuntimeException re ? re : new IllegalArgumentException(exception));
+        }
+    }
+
+    public static void setBlock(JsonObject block, Context context) {
         BlockPos origin = actionOrigin(block, context);
         String id = getString(block, "type", getString(block, "id", "minecraft:air", context.random()), context.random());
         String state = block.has("state") ? evaluateString(block.get("state"), context) : "";
@@ -422,7 +404,7 @@ public class LuckyDropExecutor {
         };
     }
 
-    private static void summonEntity(JsonObject entity, Context context) {
+    public static void summonEntity(JsonObject entity, Context context) {
         BlockPos origin = actionOrigin(entity, context);
         String type = namespaced(resolveTemplate(getString(entity, "type", "minecraft:pig", context.random()), context));
         int amount = Math.max(0, getInt(entity, "amount", 1, context));
@@ -438,7 +420,7 @@ public class LuckyDropExecutor {
         }
     }
 
-    private static void fill(JsonObject fill, Context context) {
+    public static void fill(JsonObject fill, Context context) {
         BlockPos origin = actionOrigin(fill, context);
         String id = getString(fill, "type", getString(fill, "id", "minecraft:air", context.random()), context.random());
         int xSize = Math.max(1, getInt(fill, "xSize", 1, context));
@@ -503,7 +485,7 @@ public class LuckyDropExecutor {
         }
     }
 
-    private static void explosion(JsonObject explosion, Context context) {
+    public static void explosion(JsonObject explosion, Context context) {
         ServerLevel level = context.level();
         BlockPos origin = actionOrigin(explosion, context);
         int fuse = Math.max(0, getInt(explosion, "fuse", 0, context));
@@ -541,7 +523,7 @@ public class LuckyDropExecutor {
                 origin.getZ() + 0.5 + offset[2] + getDouble(action, "z", 0.0, context));
     }
 
-    private static void applyEffect(JsonObject effect, Context context) {
+    public static void applyEffect(JsonObject effect, Context context) {
         String rawId = getString(effect, "id", getString(effect, "type", "", context.random()), context.random());
         if (rawId.isEmpty()) throw new IllegalArgumentException("effect requires id");
         String id = namespaced(resolveTemplate(rawId, context));
@@ -555,7 +537,7 @@ public class LuckyDropExecutor {
         }
     }
 
-    private static void applyImpulse(JsonObject impulse, Context context) {
+    public static void applyImpulse(JsonObject impulse, Context context) {
         Vec3 velocity = resolveImpulseVector(impulse, context);
         for (Entity target : resolveTargets(impulse, context)) {
             target.setDeltaMovement(target.getDeltaMovement().add(velocity));
@@ -606,20 +588,20 @@ public class LuckyDropExecutor {
         return context.player() != null ? List.of(context.player()) : List.of();
     }
 
-    private static void sound(JsonObject sound, Context context) {
+    public static void sound(JsonObject sound, Context context) {
         BlockPos origin = actionOrigin(sound, context);
         String id = getString(sound, "type", getString(sound, "id", "minecraft:block.note_block.pling", context.random()), context.random());
         runAtBlock("playsound " + id + " master @a " + relativePos(sound, context), context, origin);
     }
 
-    private static void particle(JsonObject particle, Context context) {
+    public static void particle(JsonObject particle, Context context) {
         BlockPos origin = actionOrigin(particle, context);
         String id = getString(particle, "type", getString(particle, "id", "minecraft:happy_villager", context.random()), context.random());
         int amount = Math.max(1, getInt(particle, "amount", getInt(particle, "particleAmount", 1, context), context));
         runAtBlock("particle " + id + " " + relativePos(particle, context) + " 0 0 0 0 " + amount, context, origin);
     }
 
-    private static void structure(JsonObject structure, Context context) {
+    public static void structure(JsonObject structure, Context context) {
         JsonObject placement = structure.deepCopy();
         if (placement.has("rotation")) {
             placement.addProperty("rotation", evaluateString(placement.get("rotation"), context));
@@ -638,7 +620,7 @@ public class LuckyDropExecutor {
         );
     }
 
-    private static void repeat(JsonObject repeat, Context context) {
+    public static void repeat(JsonObject repeat, Context context) {
         if (!repeat.has("drops")) {
             return;
         }
@@ -654,7 +636,7 @@ public class LuckyDropExecutor {
         }
     }
 
-    private static void random(JsonObject random, Context context) {
+    public static void random(JsonObject random, Context context) {
         JsonArray drops = random.getAsJsonArray("drops");
         if (drops == null || drops.isEmpty()) {
             return;
@@ -823,11 +805,11 @@ public class LuckyDropExecutor {
         runAtBlock("fill ~ ~ ~ ~" + (size[0] - 1) + " ~" + (size[1] - 1) + " ~" + (size[2] - 1) + " " + id + " replace", context);
     }
 
-    private static void runAtBlock(String command, Context context) {
+    public static void runAtBlock(String command, Context context) {
         runAtBlock(command, context, context.pos());
     }
 
-    private static void runAtBlock(String command, Context context, BlockPos origin) {
+    public static void runAtBlock(String command, Context context, BlockPos origin) {
         String dimension = context.level().dimension().identifier().toString();
         String fullCommand = String.format(Locale.ROOT, "execute in %s positioned %d %d %d run %s", dimension, origin.getX(), origin.getY(), origin.getZ(), command);
 
@@ -838,7 +820,7 @@ public class LuckyDropExecutor {
         }
     }
 
-    private static void logFailure(String action, Context context, RuntimeException exception) {
+    public static void logFailure(String action, Context context, RuntimeException exception) {
         LuckyBlock.LOGGER.warn(
                 "Lucky drop {} failed to {} at {} in {} blockPos={} jsonPath={}: {}",
                 context.dropId(),
@@ -1922,11 +1904,11 @@ public class LuckyDropExecutor {
         }
     }
 
-    private static String evaluateString(JsonElement element, Context context) {
+    public static String evaluateString(JsonElement element, Context context) {
         return replaceLegacyTemplates(replaceRandom(element.getAsString(), context.random()), context);
     }
 
-    private static String evaluateString(JsonElement element, RandomSource random) {
+    public static String evaluateString(JsonElement element, RandomSource random) {
         return replaceRandom(element.getAsString(), random);
     }
 
@@ -2001,7 +1983,7 @@ public class LuckyDropExecutor {
         return Double.toString(value);
     }
 
-    private record Context(
+    public static record Context(
             Identifier dropId,
             ServerLevel level,
             BlockPos pos,
@@ -2013,11 +1995,11 @@ public class LuckyDropExecutor {
     ) {
         private static final int NO_REPEAT_INDEX = -1;
 
-        private Context child(String suffix) {
+        public Context child(String suffix) {
             return new Context(dropId, level, pos, player, random, path + suffix, structureAnchor, repeatIndex);
         }
 
-        private Context withRepeatIndex(int index) {
+        public Context withRepeatIndex(int index) {
             return new Context(dropId, level, pos, player, random, path, structureAnchor, index);
         }
     }

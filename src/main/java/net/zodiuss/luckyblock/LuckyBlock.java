@@ -13,6 +13,7 @@ import net.zodiuss.luckyblock.drop.LuckyDropScheduler;
 import net.zodiuss.luckyblock.component.ModComponents;
 import net.zodiuss.luckyblock.creativemodetab.ModTabs;
 import net.zodiuss.luckyblock.structure.LuckyStructureRegistry;
+import net.zodiuss.luckyblock.LuckyCacheManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +34,10 @@ public class LuckyBlock implements ModInitializer {
 		ModTabs.register();
 		LuckyCommands.register();
 
-		ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-			AddonRegistry.reloadDrops();
-			LuckyStructureRegistry.reload(server);
-		});
+		ServerLifecycleEvents.SERVER_STARTED.register(LuckyCacheManager::reloadAll);
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> {
 			if (success) {
-				AddonRegistry.reloadDrops();
-				LuckyStructureRegistry.reload(server);
+				LuckyCacheManager.reloadAll(server);
 			}
 		});
 

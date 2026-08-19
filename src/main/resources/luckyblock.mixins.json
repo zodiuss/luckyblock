@@ -2,9 +2,7 @@
 	"required": true,
 	"package": "net.zodiuss.luckyblock.mixin",
 	"compatibilityLevel": "JAVA_25",
-	"mixins": [
-		"ExampleMixin"
-	],
+	"mixins": [],
 	"client": [
 		"client.PackRepositoryMixin"
 	],

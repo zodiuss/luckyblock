@@ -25,7 +25,7 @@ public final class AddonDropCache {
     private AddonDropCache() {
     }
 
-    public static void reload(List<LuckyAddon> addons) {
+    public static synchronized void reload(List<LuckyAddon> addons) {
         clear();
 
         for (LuckyAddon addon : addons) {
@@ -37,22 +37,22 @@ public final class AddonDropCache {
         }
     }
 
-    public static void clear() {
+    public static synchronized void clear() {
         DROPS_BY_ADDON.clear();
         DROPS_BY_ID.clear();
     }
 
-    public static List<LuckyDrop> getSelectableDrops(String addonIdentifier) {
+    public static synchronized List<LuckyDrop> getSelectableDrops(String addonIdentifier) {
         return DROPS_BY_ADDON.getOrDefault(addonIdentifier, List.of()).stream()
                 .filter(AddonDropCache::isDirectDropFile)
                 .toList();
     }
 
-    public static List<LuckyDrop> getAllDrops() {
+    public static synchronized List<LuckyDrop> getAllDrops() {
         return List.copyOf(DROPS_BY_ID.values());
     }
 
-    public static LuckyDrop getDrop(Identifier id) {
+    public static synchronized LuckyDrop getDrop(Identifier id) {
         return DROPS_BY_ID.get(id);
     }
 

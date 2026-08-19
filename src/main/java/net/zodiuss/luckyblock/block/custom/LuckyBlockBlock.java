@@ -86,14 +86,10 @@ public class LuckyBlockBlock extends BaseEntityBlock {
     }
 
     private void scheduleDrop(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player, @Nullable BlockEntity blockEntity) {
-        CustomDropData customDrop = readCustomDrop(level, pos, blockEntity);
-        StructureAnchor structureAnchor = readStructureAnchor(blockEntity);
-        int luck = decodeLuck(state.getValue(LUCK));
+        DropContext dropContext = resolveDropContext(level, pos, state, blockEntity);
         BlockPos dropPos = pos.immutable();
 
-        LuckyDropScheduler.schedule(level, level.getGameTime() + 1, () -> LuckyDropSelector.resolve(level.getServer(), customDrop, state.getBlock())
-                .or(() -> LuckyDropSelector.select(level.getServer(), luck, level.getRandom(), state.getBlock()))
-                .ifPresent(drop -> LuckyDropExecutor.execute(drop, level, dropPos, player, structureAnchor)));
+        LuckyDropScheduler.schedule(level, level.getGameTime() + 1, () -> executeResolvedDrop(level, dropPos, state, player, dropContext));
     }
 
     private void runDropAndRemove(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player) {
@@ -101,17 +97,25 @@ public class LuckyBlockBlock extends BaseEntityBlock {
             return;
         }
 
-        BlockEntity blockEntity = level.getBlockEntity(pos);
-        CustomDropData customDrop = readCustomDrop(level, pos, blockEntity);
-        StructureAnchor structureAnchor = readStructureAnchor(blockEntity);
-        int luck = decodeLuck(state.getValue(LUCK));
+        DropContext dropContext = resolveDropContext(level, pos, state, level.getBlockEntity(pos));
 
         level.removeBlock(pos, false);
         level.removeBlockEntity(pos);
 
-        LuckyDropSelector.resolve(level.getServer(), customDrop, state.getBlock())
-                .or(() -> LuckyDropSelector.select(level.getServer(), luck, level.getRandom(), state.getBlock()))
-                .ifPresent(drop -> LuckyDropExecutor.execute(drop, level, pos, player, structureAnchor));
+        executeResolvedDrop(level, pos, state, player, dropContext);
+    }
+
+    private void executeResolvedDrop(ServerLevel level, BlockPos pos, BlockState state, @Nullable Player player, DropContext dropContext) {
+        LuckyDropSelector.resolve(level.getServer(), dropContext.customDrop(), state.getBlock())
+                .or(() -> LuckyDropSelector.select(level.getServer(), dropContext.luck(), level.getRandom(), state.getBlock()))
+                .ifPresent(drop -> LuckyDropExecutor.execute(drop, level, pos, player, dropContext.structureAnchor()));
+    }
+
+    private DropContext resolveDropContext(Level level, BlockPos pos, BlockState state, @Nullable BlockEntity blockEntity) {
+        CustomDropData customDrop = readCustomDrop(level, pos, blockEntity);
+        StructureAnchor structureAnchor = readStructureAnchor(blockEntity);
+        int luck = decodeLuck(state.getValue(LUCK));
+        return new DropContext(customDrop, structureAnchor, luck);
     }
 
     private static CustomDropData readCustomDrop(Level level, BlockPos pos, @Nullable BlockEntity blockEntity) {
@@ -145,4 +149,6 @@ public class LuckyBlockBlock extends BaseEntityBlock {
     public @Nullable BlockEntity newBlockEntity(@NonNull BlockPos pos, @NonNull BlockState state) {
         return new LuckyBlockEntity(pos, state);
     }
+
+    private record DropContext(CustomDropData customDrop, StructureAnchor structureAnchor, int luck) {}
 }

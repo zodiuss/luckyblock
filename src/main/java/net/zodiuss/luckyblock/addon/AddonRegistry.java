@@ -22,7 +22,7 @@ public final class AddonRegistry {
     private AddonRegistry() {
     }
 
-    public static void loadFromGameDirectory() {
+    public synchronized static void loadFromGameDirectory() {
         closeAddons();
         Path addonsDirectory = FabricLoader.getInstance().getGameDir().resolve(AddonLoader.ADDONS_DIRECTORY);
         List<LuckyAddon> discovered = AddonLoader.discover(addonsDirectory);
@@ -33,20 +33,20 @@ public final class AddonRegistry {
         }
     }
 
-    public static void bindBlock(LuckyAddon addon, Block block) {
+    public synchronized static void bindBlock(LuckyAddon addon, Block block) {
         addon.setBlock(block);
         ADDONS_BY_BLOCK.put(block, addon);
     }
 
-    public static List<LuckyAddon> getAddons() {
+    public synchronized static List<LuckyAddon> getAddons() {
         return Collections.unmodifiableList(ADDONS);
     }
 
-    public static Optional<LuckyAddon> getAddon(String identifier) {
+    public synchronized static Optional<LuckyAddon> getAddon(String identifier) {
         return Optional.ofNullable(ADDONS_BY_ID.get(identifier));
     }
 
-    public static Optional<LuckyAddon> getAddonForBlock(@Nullable Block block) {
+    public synchronized static Optional<LuckyAddon> getAddonForBlock(@Nullable Block block) {
         if (block == null) {
             return Optional.empty();
         }
@@ -54,11 +54,11 @@ public final class AddonRegistry {
         return Optional.ofNullable(ADDONS_BY_BLOCK.get(block));
     }
 
-    public static void reloadDrops() {
+    public synchronized static void reloadDrops() {
         AddonDropCache.reload(ADDONS);
     }
 
-    private static void closeAddons() {
+    private synchronized static void closeAddons() {
         for (LuckyAddon addon : ADDONS) {
             try {
                 addon.close();

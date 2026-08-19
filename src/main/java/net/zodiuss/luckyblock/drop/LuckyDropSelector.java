@@ -2,10 +2,8 @@ package net.zodiuss.luckyblock.drop;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
 import net.zodiuss.luckyblock.LuckyBlock;
@@ -15,11 +13,8 @@ import net.zodiuss.luckyblock.addon.LuckyAddon;
 import net.zodiuss.luckyblock.component.CustomDropData;
 import org.jspecify.annotations.Nullable;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 public class LuckyDropSelector {
@@ -157,34 +152,24 @@ public class LuckyDropSelector {
     }
 
     private static List<LuckyDrop> loadModSelectableDrops(MinecraftServer server) {
-        return loadModAllDrops(server).stream().filter(drop -> isDirectDropFile(drop.id())).toList();
+        List<LuckyDrop> cached = VanillaDropCache.getSelectableDrops();
+        if (!cached.isEmpty()) {
+            return cached;
+        }
+        return VanillaDropCache.getAllDrops().stream().filter(drop -> VanillaDropCache.isDirectDropFile(drop.id())).toList();
     }
 
     private static List<LuckyDrop> loadModAllDrops(MinecraftServer server) {
-        Map<Identifier, Resource> resources = server.getResourceManager()
-                .listResources(DROPS_PATH, id -> id.getNamespace().equals(LuckyBlock.MOD_ID) && id.getPath().endsWith(".json"));
-
-        List<LuckyDrop> drops = new ArrayList<>();
-
-        for (Map.Entry<Identifier, Resource> entry : resources.entrySet()) {
-            try (BufferedReader reader = entry.getValue().openAsReader()) {
-                drops.add(readDrop(entry.getKey(), reader));
-            } catch (RuntimeException | IOException exception) {
-                LuckyBlock.LOGGER.warn("Failed to load lucky drop {}", entry.getKey(), exception);
-            }
+        List<LuckyDrop> cached = VanillaDropCache.getAllDrops();
+        if (!cached.isEmpty()) {
+            return cached;
         }
-
-        return drops;
+        VanillaDropCache.reload(server);
+        return VanillaDropCache.getAllDrops();
     }
 
     private static boolean isDirectDropFile(Identifier id) {
-        String path = id.getPath();
-        if (!path.startsWith(DROPS_PATH + "/") || !path.endsWith(".json")) {
-            return false;
-        }
-
-        String relativePath = path.substring(DROPS_PATH.length() + 1);
-        return !relativePath.contains("/");
+        return VanillaDropCache.isDirectDropFile(id);
     }
 
     private static String normalizeDropName(String name) {
@@ -226,33 +211,6 @@ public class LuckyDropSelector {
                 || fileNameWithoutExtension.equals(normalizedName)
                 || path.equals(normalizedName)
                 || id.toString().equals(normalizedName);
-    }
-
-    private static LuckyDrop readDrop(Identifier id, BufferedReader reader) {
-        JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-
-        int luck = getRequiredInt(json, "luck", id);
-        JsonElement drop = getRequired(json, "drop", id);
-        double weight = json.has("weight") ? json.get("weight").getAsDouble() : 1.0;
-
-        if (weight <= 0.0) {
-            throw new IllegalArgumentException("Lucky drop " + id + " must have a positive weight");
-        }
-
-        return new LuckyDrop(id, weight, luck, drop);
-    }
-
-    private static JsonElement getRequired(JsonObject json, String key, Identifier id) {
-        JsonElement element = json.get(key);
-        if (element == null) {
-            throw new IllegalArgumentException("Lucky drop " + id + " is missing required field '" + key + "'");
-        }
-
-        return element;
-    }
-
-    private static int getRequiredInt(JsonObject json, String key, Identifier id) {
-        return getRequired(json, key, id).getAsInt();
     }
 
     private record WeightedDrop(LuckyDrop drop, double weight) {

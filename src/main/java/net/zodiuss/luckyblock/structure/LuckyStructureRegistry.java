@@ -22,12 +22,12 @@ public final class LuckyStructureRegistry {
     private static final String STRUCTURES_FOLDER = "structures";
     private static final String STRUCTURES_PATH_PREFIX = STRUCTURES_FOLDER + "/";
 
-    private static Map<String, LuckyStructureDefinition> templates = Map.of();
+    private static volatile Map<String, LuckyStructureDefinition> templates = Map.of();
 
     private LuckyStructureRegistry() {
     }
 
-    public static void reload(MinecraftServer server) {
+    public static synchronized void reload(MinecraftServer server) {
         ResourceManager resourceManager = server.getResourceManager();
         HolderGetter<Block> blockLookup = server.registryAccess().lookupOrThrow(Registries.BLOCK);
         Map<String, LuckyStructureDefinition> loaded = new HashMap<>();
@@ -57,11 +57,11 @@ public final class LuckyStructureRegistry {
         LuckyBlock.LOGGER.info("Loaded {} lucky structure templates", templates.size());
     }
 
-    public static boolean isEmpty() {
+    public static synchronized boolean isEmpty() {
         return templates.isEmpty();
     }
 
-    public static Optional<LuckyStructureDefinition> find(String file) {
+    public static synchronized Optional<LuckyStructureDefinition> find(String file) {
         return Optional.ofNullable(templates.get(normalizeFile(file)));
     }
 

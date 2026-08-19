@@ -1,7 +1,3 @@
-// Root project - no code, just aggregates
-// Use `gradlew :fabric:build` or `gradlew :neoforge:build` to build a single loader
-// `gradlew build` builds both
-
 tasks.register("buildFabric") {
     group = "build"
     description = "Builds the Fabric jar"

@@ -2,8 +2,7 @@ package net.zodiuss.luckyblock.structure;
 
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.Resource;
@@ -46,7 +45,8 @@ public final class LuckyStructureRegistry {
             String file = path.substring(STRUCTURES_PATH_PREFIX.length());
             try (InputStream stream = entry.getValue().open()) {
                 StructureTemplate template = new StructureTemplate();
-                template.load(blockLookup, NbtIo.readCompressed(stream, NbtAccounter.unlimitedHeap()));
+                CompoundTag tag = net.zodiuss.luckyblock.platform.NbtHelper.readCompressed(stream);
+                template.load(blockLookup, tag);
                 loaded.put(file, new LuckyStructureDefinition(file, template));
             } catch (IOException exception) {
                 LuckyBlock.LOGGER.warn("Failed to load structure NBT {}", entry.getKey(), exception);

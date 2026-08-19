@@ -573,10 +573,6 @@ public class LuckyDropExecutor {
                         parts.size() > 2 ? evaluateNumberOrFallback(parts.get(2), 0, context) : 0);
             }
             String rawVector = vector.getAsString().trim();
-            // Resolve a vector calculation directly before falling back to legacy
-            // comma-separated coordinates. This avoids treating the resulting
-            // "[x,y,z]" as a scalar expression when the calculation contains
-            // #pLookVector.
             if (rawVector.startsWith("#calc(") && rawVector.endsWith(")")) {
                 String expression = applyTemplatesForCalc(rawVector.substring(6, rawVector.length() - 1), context);
                 if (expression.contains("[") || expression.contains("#pLookVector")) {

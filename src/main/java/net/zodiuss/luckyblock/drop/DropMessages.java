@@ -116,7 +116,6 @@ public final class DropMessages {
                     .getOrThrow(error -> new IllegalStateException("Invalid message component: " + error));
         } catch (Throwable throwable) {
             LuckyBlock.LOGGER.warn("Failed to convert adventure component; using plain text", throwable);
-            // Fall back to a plain literal if Gson serialization is unavailable
             return Component.literal(adventure.toString());
         }
     }

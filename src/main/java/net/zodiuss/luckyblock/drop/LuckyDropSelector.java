@@ -87,12 +87,6 @@ public class LuckyDropSelector {
             return Optional.empty();
         }
 
-        // AlexSocha packs traditionally use outcomes from -2 to +2. Preserve
-        // that formula exactly for those packs. Extended packs can author in
-        // the much more expressive -100 to +100 range; map that authoring
-        // scale onto the original five-tier scale before applying the same
-        // exponential weighting equation. Without this normalization, a
-        // single +30 or -50 outcome makes a +/-100 block deterministic.
         boolean usesExtendedLuck = drops.stream()
                 .anyMatch(drop -> Math.abs(drop.luck()) > ALEXSOCHA_LUCK_LIMIT);
         double luckScale = usesExtendedLuck ? EXTENDED_TO_ALEXSOCHA_SCALE : 1.0;
@@ -159,8 +153,6 @@ public class LuckyDropSelector {
                     .toList();
         }
 
-        // The base Lucky Block owns only the drops packaged by this mod. Addon
-        // drops are deliberately private to their matching addon block.
         return loadModAllDrops(server);
     }
 

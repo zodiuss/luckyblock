@@ -6,6 +6,7 @@ import net.zodiuss.luckyblock.block.LuckyBlocks;
 import net.zodiuss.luckyblock.block.entity.ModBlockEntities;
 import net.zodiuss.luckyblock.component.ModComponents;
 import net.zodiuss.luckyblock.creativemodetab.ModTabs;
+import net.zodiuss.luckyblock.recipe.ModRecipes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,7 @@ public final class LuckyBlock {
         LOGGER.info("Initializing Lucky Block Mod (common)");
 
         ModComponents.register();
+        ModRecipes.register();
         if (gameDir != null) {
             AddonRegistry.loadFromGameDirectory(gameDir);
         } else {

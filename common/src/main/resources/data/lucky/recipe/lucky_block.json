@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "group": "lucky_block",
+  "pattern": [
+    "GGG",
+    "GDG",
+    "GGG"
+  ],
+  "key": {
+    "G": "minecraft:gold_ingot",
+    "D": "minecraft:dispenser"
+  },
+  "result": {
+    "id": "lucky:lucky_block",
+    "count": 1
+  }
+}

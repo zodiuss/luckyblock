@@ -37,6 +37,7 @@ public class LuckyBlockNeoForge {
         LuckyBlock.initPreRegistry(FMLPaths.GAMEDIR.get());
 
         net.zodiuss.luckyblock.component.ModComponents.register();
+        net.zodiuss.luckyblock.recipe.ModRecipes.register();
         LuckyBlocks.register();
         ModBlockEntities.register();
         ModTabs.register();
@@ -118,6 +119,24 @@ public class LuckyBlockNeoForge {
                     helper.register(e.id(), tab);
                     if (e.id().getPath().equals("lucky_blocks")) {
                         ModTabs.setFromRegistered(tab);
+                    }
+                }
+            });
+        } else if (key.equals(Registries.RECIPE_SERIALIZER)) {
+            event.register(Registries.RECIPE_SERIALIZER, helper -> {
+                for (var e : RegistryHelper.PENDING_RECIPE_SERIALIZERS) {
+                    helper.register(e.id(), e.serializer());
+                    if (e.id().getPath().equals("lucky_luck")) {
+                        net.zodiuss.luckyblock.recipe.ModRecipes.setSerializerFromRegistered(e.serializer());
+                    }
+                }
+            });
+        } else if (key.equals(Registries.RECIPE_TYPE)) {
+            event.register(Registries.RECIPE_TYPE, helper -> {
+                for (var e : RegistryHelper.PENDING_RECIPE_TYPES) {
+                    helper.register(e.id(), e.type());
+                    if (e.id().getPath().equals("lucky_luck")) {
+                        net.zodiuss.luckyblock.recipe.ModRecipes.setTypeFromRegistered(e.type());
                     }
                 }
             });

@@ -8,6 +8,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.RecipeType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +41,8 @@ public class RegistryHelper {
     public static final List<PendingBlockEntityFactory> PENDING_BLOCK_ENTITY_FACTORIES = new ArrayList<>();
     public static final List<PendingTab> PENDING_TABS = new ArrayList<>();
     public static final List<PendingTabFactory> PENDING_TAB_FACTORIES = new ArrayList<>();
+    public static final List<PendingRecipeSerializer<?>> PENDING_RECIPE_SERIALIZERS = new ArrayList<>();
+    public static final List<PendingRecipeType<?>> PENDING_RECIPE_TYPES = new ArrayList<>();
 
     public record PendingBlock(Identifier id, Block block) {}
     public record PendingBlockFactory(Identifier id, java.util.function.Function<net.minecraft.world.level.block.state.BlockBehaviour.Properties, Block> factory) {}
@@ -49,6 +53,8 @@ public class RegistryHelper {
     public record PendingBlockEntityFactory(Identifier id, java.util.function.Supplier<BlockEntityType<?>> factory) {}
     public record PendingTab(Identifier id, CreativeModeTab tab) {}
     public record PendingTabFactory(Identifier id, java.util.function.Supplier<CreativeModeTab> factory) {}
+    public record PendingRecipeSerializer<T extends net.minecraft.world.item.crafting.Recipe<?>>(Identifier id, RecipeSerializer<T> serializer) {}
+    public record PendingRecipeType<T extends net.minecraft.world.item.crafting.Recipe<?>>(Identifier id, RecipeType<T> type) {}
 
     public static Block registerBlock(Identifier id, Block block) {
         if (IS_NEOFORGE) {
@@ -112,6 +118,34 @@ public class RegistryHelper {
         PENDING_TAB_FACTORIES.add(new PendingTabFactory(id, factory));
     }
 
+    public static <T extends net.minecraft.world.item.crafting.Recipe<?>> RecipeSerializer<T> registerRecipeSerializer(Identifier id, RecipeSerializer<T> serializer) {
+        if (IS_NEOFORGE) {
+            PENDING_RECIPE_SERIALIZERS.add(new PendingRecipeSerializer<>(id, serializer));
+            return serializer;
+        } else {
+            return Registry.register(BuiltInRegistries.RECIPE_SERIALIZER, id, serializer);
+        }
+    }
+
+    public static void queueRecipeSerializer(Identifier id, RecipeSerializer<?> serializer) {
+        //noinspection unchecked
+        PENDING_RECIPE_SERIALIZERS.add(new PendingRecipeSerializer<>((Identifier) id, (RecipeSerializer) serializer));
+    }
+
+    public static <T extends net.minecraft.world.item.crafting.Recipe<?>> RecipeType<T> registerRecipeType(Identifier id, RecipeType<T> type) {
+        if (IS_NEOFORGE) {
+            PENDING_RECIPE_TYPES.add(new PendingRecipeType<>(id, type));
+            return type;
+        } else {
+            return Registry.register(BuiltInRegistries.RECIPE_TYPE, id, type);
+        }
+    }
+
+    public static void queueRecipeType(Identifier id, RecipeType<?> type) {
+        //noinspection unchecked
+        PENDING_RECIPE_TYPES.add(new PendingRecipeType<>((Identifier) id, (RecipeType) type));
+    }
+
     public static boolean isNeoForgePublic() {
         return IS_NEOFORGE;
     }
@@ -126,5 +160,7 @@ public class RegistryHelper {
         PENDING_BLOCK_ENTITY_FACTORIES.clear();
         PENDING_TABS.clear();
         PENDING_TAB_FACTORIES.clear();
+        PENDING_RECIPE_SERIALIZERS.clear();
+        PENDING_RECIPE_TYPES.clear();
     }
 }

@@ -934,7 +934,55 @@ public class LuckyDropExecutor {
             return "";
         }
         if (rawComponents.startsWith("[") && rawComponents.endsWith("]")) {
-            return rawComponents;
+            // 1.21.1: item custom_name must be a stringified JSON, not a raw object.
+            // Data on main (26.2) uses [custom_name={"text":"Romantic Rose",...}] which ItemParser
+            // rejects as "Not a string" on 1.21.1. Convert to [minecraft:custom_name="{\"text\":...}"]
+            // by falling through to the normal parser when needed, or doing a direct
+            // stringify of the JSON object.
+            if (rawComponents.contains("custom_name={") || rawComponents.contains("custom_name :{") || rawComponents.contains("\"minecraft:custom_name\"={") || rawComponents.contains("minecraft:custom_name={")) {
+                // Strip outer brackets and parse as legacy props to get proper stringified form
+                String inner = rawComponents.substring(1, rawComponents.length() - 1);
+                // Try to handle JSON object for custom_name / item_name
+                // Look for custom_name={...} pattern and stringify the JSON object
+                java.util.regex.Pattern p = java.util.regex.Pattern.compile("(minecraft:)?custom_name\\s*=\\s*(\\{[^\\}]*\\})");
+                java.util.regex.Matcher m = p.matcher(inner);
+                StringBuffer sb = new StringBuffer();
+                boolean found = false;
+                while (m.find()) {
+                    String jsonObj = m.group(2);
+                    String stringified = jsonObj.replace("\"", "\\\"");
+                    stringified = "\"" + stringified + "\"";
+                    // Ensure minecraft: prefix
+                    m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement("minecraft:custom_name=" + stringified));
+                    found = true;
+                }
+                m.appendTail(sb);
+                if (found) {
+                    String resultInner = sb.toString();
+                    // Also handle item_name similarly
+                    java.util.regex.Pattern p2 = java.util.regex.Pattern.compile("(minecraft:)?item_name\\s*=\\s*(\\{[^\\}]*\\})");
+                    java.util.regex.Matcher m2 = p2.matcher(resultInner);
+                    StringBuffer sb2 = new StringBuffer();
+                    boolean found2 = false;
+                    while (m2.find()) {
+                        String jsonObj = m2.group(2);
+                        String stringified = jsonObj.replace("\"", "\\\"");
+                        stringified = "\"" + stringified + "\"";
+                        m2.appendReplacement(sb2, java.util.regex.Matcher.quoteReplacement("minecraft:item_name=" + stringified));
+                        found2 = true;
+                    }
+                    m2.appendTail(sb2);
+                    if (found2) resultInner = sb2.toString();
+                    // Ensure all custom_name without minecraft: gets prefix already handled, return brackets
+                    // Also need to handle bare custom_name without minecraft: prefix
+                    // The above already prefixes, so just return
+                    return "[" + resultInner + "]";
+                }
+                // Fallback: if regex didn't match (complex nested JSON), try legacy parser path
+                rawComponents = inner;
+            } else {
+                return rawComponents;
+            }
         }
 
         if (rawComponents.startsWith("{") && rawComponents.endsWith("}")) {

@@ -6,7 +6,7 @@
       "type": "minecraft:llama",
       "posOffset": "#circleOffset(4)",
       "amount": "8",
-      "nbt": "{CustomName:{text:#randList{Llaura,Llauretta,Llavender,Llinda,Llisa,Llouise,Llucy,Llydia},color:dark_purple,bold:1b},Variant:#random{0,3},CustomNameVisible:1b}"
+      "nbt": "{CustomName:{text:#randList(Llaura,Llauretta,Llavender,Llinda,Llisa,Llouise,Llucy,Llydia),color:dark_purple,bold:1b},Variant:#random(0,3),CustomNameVisible:1b}"
     }
   }
 }

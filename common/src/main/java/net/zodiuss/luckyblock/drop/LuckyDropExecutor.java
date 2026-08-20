@@ -1366,6 +1366,7 @@ public class LuckyDropExecutor {
         if (value.startsWith("{") && value.endsWith("}")) {
             value = convertJsonCustomNames(value, context);
             value = convertSignMessages(value, context);
+            value = convertEquipmentForPre1_21_2(value);
             return value;
         }
         if (value.startsWith("(") && value.endsWith(")")) {
@@ -1409,6 +1410,87 @@ public class LuckyDropExecutor {
         }
         m.appendTail(sb);
         return sb.toString();
+    }
+
+    private static String convertEquipmentForPre1_21_2(String value) {
+        // 1.21.1 and earlier use ArmorItems/HandItems, not equipment/drop_chances (introduced 1.21.2).
+        // Data files on main (26.2) use equipment:{mainhand,feet,legs,chest,head} + drop_chances:{...}.
+        // Convert at runtime so 1.21.1 can keep shared data.
+        if (!value.contains("equipment:")) return value;
+        StringBuilder out = new StringBuilder();
+        int cursor = 0;
+        while (true) {
+            int equipIdx = value.indexOf("equipment:", cursor);
+            if (equipIdx < 0) {
+                out.append(value.substring(cursor));
+                break;
+            }
+            out.append(value, cursor, equipIdx);
+            int equipBraceOpen = value.indexOf('{', equipIdx);
+            if (equipBraceOpen < 0) { out.append(value.substring(equipIdx)); break; }
+            int equipBraceClose = findMatchingBrace(value, equipBraceOpen);
+            if (equipBraceClose < 0) { out.append(value.substring(equipIdx)); break; }
+            String equipInner = value.substring(equipBraceOpen + 1, equipBraceClose);
+            java.util.Map<String,String> equipMap = parseEquipmentMap(equipInner);
+            // look for drop_chances immediately after
+            int dcIdx = -1;
+            int dcOpen = -1;
+            int dcClose = -1;
+            java.util.Map<String,String> dcMap = new java.util.HashMap<>();
+            int dcSearch = value.indexOf("drop_chances:", equipBraceClose);
+            if (dcSearch >= 0) {
+                String between = value.substring(equipBraceClose + 1, dcSearch);
+                // only consume if between is just comma/whitespace
+                if (between.trim().matches("[,\\s]*")) {
+                    dcIdx = dcSearch;
+                    dcOpen = value.indexOf('{', dcIdx);
+                    if (dcOpen >= 0) dcClose = findMatchingBrace(value, dcOpen);
+                    if (dcClose >= 0) {
+                        String dcInner = value.substring(dcOpen + 1, dcClose);
+                        dcMap = parseEquipmentMap(dcInner);
+                    }
+                }
+            }
+            String feet = equipMap.getOrDefault("feet", "{}");
+            String legs = equipMap.getOrDefault("legs", "{}");
+            String chest = equipMap.getOrDefault("chest", "{}");
+            String head = equipMap.getOrDefault("head", "{}");
+            String mainhand = equipMap.getOrDefault("mainhand", "{}");
+            String offhand = equipMap.getOrDefault("offhand", "{}");
+            String armorItems = "ArmorItems:[" + feet + "," + legs + "," + chest + "," + head + "]";
+            // Note: ArmorItems order is feet,legs,chest,head in 1.21.1
+            String handItems = "HandItems:[" + mainhand + "," + offhand + "]";
+            String feetChance = dcMap.getOrDefault("feet", "0.085f");
+            String legsChance = dcMap.getOrDefault("legs", "0.085f");
+            String chestChance = dcMap.getOrDefault("chest", "0.085f");
+            String headChance = dcMap.getOrDefault("head", "0.085f");
+            String mainhandChance = dcMap.getOrDefault("mainhand", "0.085f");
+            String offhandChance = dcMap.getOrDefault("offhand", "0.085f");
+            String armorDrop = "ArmorDropChances:[" + feetChance + "," + legsChance + "," + chestChance + "," + headChance + "]";
+            String handDrop = "HandDropChances:[" + mainhandChance + "," + offhandChance + "]";
+            String replacement = armorItems + "," + armorDrop + "," + handItems + "," + handDrop;
+            out.append(replacement);
+            if (dcClose >= 0) {
+                cursor = dcClose + 1;
+            } else {
+                cursor = equipBraceClose + 1;
+            }
+        }
+        return out.toString();
+    }
+
+    private static java.util.Map<String,String> parseEquipmentMap(String inner) {
+        java.util.Map<String,String> map = new java.util.HashMap<>();
+        for (String part : splitTopLevel(inner, ',')) {
+            int colon = part.indexOf(':');
+            if (colon <= 0) continue;
+            String key = part.substring(0, colon).trim();
+            String val = part.substring(colon + 1).trim();
+            // normalize key without quotes
+            key = key.replace("\"", "").replace("'", "").trim();
+            map.put(key, val);
+        }
+        return map;
     }
 
     private static String randomItemMotion(Context context) {

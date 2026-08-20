@@ -440,9 +440,12 @@ public class LuckyDropExecutor {
         }
 
         int[] offset = resolvePosOffset(fill, context);
-        double baseX = getDouble(fill, "x", 0.0, context);
-        double baseY = getDouble(fill, "y", 0.0, context);
-        double baseZ = getDouble(fill, "z", 0.0, context);
+        // 1.21.1 fix: resolvePosOffset already includes x/y/z when no posOffset is present
+        // (mirrors relativePos logic). Previously fill double-counted x/y/z as offset+base,
+        // placing lava_pit_trap at ~ -40 instead of -20 (20 blocks too low, invisible).
+        double baseX = fill.has("posOffset") ? getDouble(fill, "x", 0.0, context) : 0.0;
+        double baseY = fill.has("posOffset") ? getDouble(fill, "y", 0.0, context) : 0.0;
+        double baseZ = fill.has("posOffset") ? getDouble(fill, "z", 0.0, context) : 0.0;
         String from = formatRelative(offset[0] + baseX) + " "
                 + formatRelative(offset[1] + baseY) + " "
                 + formatRelative(offset[2] + baseZ);

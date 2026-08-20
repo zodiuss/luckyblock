@@ -2,7 +2,7 @@ package net.zodiuss.luckyblock.drop;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Block;
@@ -168,7 +168,7 @@ public class LuckyDropSelector {
         return VanillaDropCache.getAllDrops();
     }
 
-    private static boolean isDirectDropFile(Identifier id) {
+    private static boolean isDirectDropFile(ResourceLocation id) {
         return VanillaDropCache.isDirectDropFile(id);
     }
 
@@ -186,7 +186,7 @@ public class LuckyDropSelector {
         return normalizedName;
     }
 
-    private static boolean matchesDropName(Identifier id, String normalizedName) {
+    private static boolean matchesDropName(ResourceLocation id, String normalizedName) {
         String path = id.getPath();
         String fileName = path.substring(path.lastIndexOf('/') + 1);
         String fileNameWithoutExtension = fileName.endsWith(".json")

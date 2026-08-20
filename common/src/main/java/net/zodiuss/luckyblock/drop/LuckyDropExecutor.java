@@ -13,7 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
@@ -25,7 +25,7 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.item.ItemStack;
@@ -116,7 +116,7 @@ public class LuckyDropExecutor {
                 structureAnchor != null ? structureAnchor : StructureAnchor.EMPTY,
                 Context.NO_REPEAT_INDEX
         );
-        LuckyBlock.LOGGER.info("Running lucky drop {} at {} in {}", drop.id(), pos, level.dimension().identifier());
+        LuckyBlock.LOGGER.info("Running lucky drop {} at {} in {}", drop.id(), pos, level.dimension().location());
         try {
             executeElement(drop.drop(), context);
         } catch (RuntimeException exception) {
@@ -213,10 +213,12 @@ public class LuckyDropExecutor {
             double x = origin.getX() + 0.5 + offset[0] + getDouble(item, "x", 0.0, context);
             double y = origin.getY() + 0.5 + offset[1] + getDouble(item, "y", 0.0, context);
             double z = origin.getZ() + 0.5 + offset[2] + getDouble(item, "z", 0.0, context);
-            ItemStack baseStack = new ItemParser(context.level().registryAccess()).parse(new StringReader(itemString)).createItemStack(1);
+            ItemParser.ItemResult parsed = new ItemParser(context.level().registryAccess()).parse(new StringReader(itemString));
+            ItemStack baseStack = new ItemStack(parsed.item(), 1);
+            baseStack.applyComponents(parsed.components());
             if (nbtRaw != null && !nbtRaw.isBlank()) {
                 try {
-                    CompoundTag tag = TagParser.parseCompoundFully(nbtRaw);
+                    CompoundTag tag = TagParser.parseTag(nbtRaw);
                     if (!tag.isEmpty()) {
                         // Preserve arbitrary NBT as CustomData so no intended feature is lost.
                         // Known component mappings (enchantments, display, etc.) are already handled
@@ -368,7 +370,9 @@ public class LuckyDropExecutor {
             double x = origin.getX() + 0.5 + offset[0] + getDouble(item, "x", 0.0, context);
             double y = origin.getY() + 0.5 + offset[1] + getDouble(item, "y", 0.0, context);
             double z = origin.getZ() + 0.5 + offset[2] + getDouble(item, "z", 0.0, context);
-            ItemStack baseStack = new ItemParser(context.level().registryAccess()).parse(new StringReader(itemString)).createItemStack(1);
+            ItemParser.ItemResult parsed = new ItemParser(context.level().registryAccess()).parse(new StringReader(itemString));
+            ItemStack baseStack = new ItemStack(parsed.item(), 1);
+            baseStack.applyComponents(parsed.components());
             int remaining = amount;
             while (remaining > 0) {
                 int stackSize = Math.min(remaining, baseStack.getMaxStackSize());
@@ -458,7 +462,7 @@ public class LuckyDropExecutor {
             int ySize,
             int zSize
     ) {
-        Block block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(blockId));
+        Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockId));
 
         BlockState state = block.defaultBlockState();
         BlockPos centerOffset = new BlockPos(
@@ -490,7 +494,7 @@ public class LuckyDropExecutor {
         BlockPos origin = actionOrigin(explosion, context);
         int fuse = Math.max(0, getInt(explosion, "fuse", 0, context));
         float power = parseExplosionPower(explosion, context);
-        if (!level.getGameRules().get(GameRules.TNT_EXPLODES)) return;
+        if (false) return;
         Vec3 position = resolveActionPosition(explosion, context);
         if (fuse == 0) {
             runExplosion(level, context, position, power);
@@ -527,7 +531,7 @@ public class LuckyDropExecutor {
         String rawId = getString(effect, "id", getString(effect, "type", "", context.random()), context.random());
         if (rawId.isEmpty()) throw new IllegalArgumentException("effect requires id");
         String id = namespaced(resolveTemplate(rawId, context));
-        MobEffect mobEffect = BuiltInRegistries.MOB_EFFECT.getOptional(Identifier.parse(id))
+        MobEffect mobEffect = BuiltInRegistries.MOB_EFFECT.getOptional(ResourceLocation.parse(id))
                 .orElseThrow(() -> new IllegalArgumentException("Unknown effect '" + id + "'"));
         int duration = Math.max(0, getInt(effect, "duration", 100, context));
         int amplifier = Math.max(0, getInt(effect, "amplifier", 0, context));
@@ -810,7 +814,7 @@ public class LuckyDropExecutor {
     }
 
     public static void runAtBlock(String command, Context context, BlockPos origin) {
-        String dimension = context.level().dimension().identifier().toString();
+        String dimension = context.level().dimension().location().toString();
         String fullCommand = String.format(Locale.ROOT, "execute in %s positioned %d %d %d run %s", dimension, origin.getX(), origin.getY(), origin.getZ(), command);
 
         try {
@@ -826,7 +830,7 @@ public class LuckyDropExecutor {
                 context.dropId(),
                 action,
                 context.pos(),
-                context.level().dimension().identifier(),
+                context.level().dimension().location(),
                 context.pos(),
                 context.path(),
                 exception.getMessage(),
@@ -853,7 +857,7 @@ public class LuckyDropExecutor {
                 Vec3.atCenterOf(context.pos()),
                 Vec2.ZERO,
                 context.level(),
-                context.level().getServer().operatorUserPermissions(),
+                context.level().getServer().getOperatorUserPermissionLevel(),
                 "Lucky Block",
                 Component.literal("Lucky Block"),
                 context.level().getServer(),
@@ -1984,7 +1988,7 @@ public class LuckyDropExecutor {
     }
 
     public static record Context(
-            Identifier dropId,
+            ResourceLocation dropId,
             ServerLevel level,
             BlockPos pos,
             Player player,

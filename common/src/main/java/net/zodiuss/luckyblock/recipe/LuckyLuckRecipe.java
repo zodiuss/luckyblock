@@ -1,14 +1,15 @@
 package net.zodiuss.luckyblock.recipe;
 
 import com.mojang.serialization.MapCodec;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
-import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 import net.zodiuss.luckyblock.block.custom.LuckyBlockBlock;
@@ -18,10 +19,20 @@ import net.zodiuss.luckyblock.item.LuckyBlockItem;
 import java.util.Map;
 
 public class LuckyLuckRecipe extends CustomRecipe {
-    public static final LuckyLuckRecipe INSTANCE = new LuckyLuckRecipe();
+    public static final LuckyLuckRecipe INSTANCE = new LuckyLuckRecipe(CraftingBookCategory.MISC);
     public static final MapCodec<LuckyLuckRecipe> MAP_CODEC = MapCodec.unit(INSTANCE);
     public static final StreamCodec<RegistryFriendlyByteBuf, LuckyLuckRecipe> STREAM_CODEC = StreamCodec.unit(INSTANCE);
-    public static final RecipeSerializer<LuckyLuckRecipe> SERIALIZER = new RecipeSerializer<>(MAP_CODEC, STREAM_CODEC);
+    public static final RecipeSerializer<LuckyLuckRecipe> SERIALIZER = new RecipeSerializer<>() {
+        @Override
+        public MapCodec<LuckyLuckRecipe> codec() {
+            return MAP_CODEC;
+        }
+
+        @Override
+        public StreamCodec<RegistryFriendlyByteBuf, LuckyLuckRecipe> streamCodec() {
+            return STREAM_CODEC;
+        }
+    };
 
     // Modifier deltas as per spec - singular + 9x block/ore versions
     private static final Map<Item, Integer> MODIFIERS = Map.ofEntries(
@@ -56,8 +67,8 @@ public class LuckyLuckRecipe extends CustomRecipe {
             Map.entry(Items.BONE_BLOCK, -45)
     );
 
-    public LuckyLuckRecipe() {
-        super();
+    public LuckyLuckRecipe(CraftingBookCategory category) {
+        super(category);
     }
 
     private static boolean isLuckyBlock(ItemStack stack) {
@@ -102,7 +113,7 @@ public class LuckyLuckRecipe extends CustomRecipe {
     }
 
     @Override
-    public ItemStack assemble(CraftingInput input) {
+    public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
         MatchResult match = findMatch(input);
         if (match == null) return ItemStack.EMPTY;
 
@@ -116,12 +127,17 @@ public class LuckyLuckRecipe extends CustomRecipe {
     }
 
     @Override
-    public RecipeSerializer<? extends CustomRecipe> getSerializer() {
-        return SERIALIZER;
+    public boolean canCraftInDimensions(int width, int height) {
+        return width * height >= 2;
     }
 
     @Override
-    public CraftingBookCategory category() {
-        return CraftingBookCategory.MISC;
+    public ItemStack getResultItem(HolderLookup.Provider registries) {
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public RecipeSerializer<?> getSerializer() {
+        return SERIALIZER;
     }
 }

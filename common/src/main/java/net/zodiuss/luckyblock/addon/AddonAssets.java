@@ -1,6 +1,6 @@
 package net.zodiuss.luckyblock.addon;
 
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.zodiuss.luckyblock.LuckyBlock;
 
 import java.io.IOException;
@@ -60,15 +60,15 @@ public final class AddonAssets {
         return Optional.empty();
     }
 
-    public static Optional<Identifier> resolveBlockModelId(Map<String, ?> assets, String blockId) {
+    public static Optional<ResourceLocation> resolveBlockModelId(Map<String, ?> assets, String blockId) {
         return resolveModelId(assets, "assets/" + LuckyBlock.MOD_ID + "/models/block/", blockId);
     }
 
-    public static Optional<Identifier> resolveItemModelId(Map<String, ?> assets, String blockId) {
+    public static Optional<ResourceLocation> resolveItemModelId(Map<String, ?> assets, String blockId) {
         return resolveModelId(assets, "assets/" + LuckyBlock.MOD_ID + "/models/item/", blockId);
     }
 
-    private static Optional<Identifier> resolveModelId(Map<String, ?> assets, String prefix, String blockId) {
+    private static Optional<ResourceLocation> resolveModelId(Map<String, ?> assets, String prefix, String blockId) {
         List<String> modelNames = new ArrayList<>();
 
         for (String resourcePath : assets.keySet()) {
@@ -107,9 +107,9 @@ public final class AddonAssets {
         return Optional.of(modelIdFromFolder(prefix, modelNames.getFirst()));
     }
 
-    private static Identifier modelIdFromFolder(String assetPrefix, String modelName) {
+    private static ResourceLocation modelIdFromFolder(String assetPrefix, String modelName) {
         String folder = assetPrefix.substring(("assets/" + LuckyBlock.MOD_ID + "/models/").length(), assetPrefix.length() - 1);
-        return Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, folder + "/" + modelName);
+        return ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, folder + "/" + modelName);
     }
 
     public static boolean hasResource(Map<String, ?> assets, String resourcePath) {

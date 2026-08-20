@@ -3,7 +3,7 @@ package net.zodiuss.luckyblock.addon;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.zodiuss.luckyblock.LuckyBlock;
 import net.zodiuss.luckyblock.drop.LuckyDrop;
 
@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 
 public final class AddonDropCache {
     private static final Map<String, List<LuckyDrop>> DROPS_BY_ADDON = new LinkedHashMap<>();
-    private static final Map<Identifier, LuckyDrop> DROPS_BY_ID = new LinkedHashMap<>();
+    private static final Map<ResourceLocation, LuckyDrop> DROPS_BY_ID = new LinkedHashMap<>();
 
     private AddonDropCache() {
     }
@@ -52,7 +52,7 @@ public final class AddonDropCache {
         return List.copyOf(DROPS_BY_ID.values());
     }
 
-    public static synchronized LuckyDrop getDrop(Identifier id) {
+    public static synchronized LuckyDrop getDrop(ResourceLocation id) {
         return DROPS_BY_ID.get(id);
     }
 
@@ -95,7 +95,7 @@ public final class AddonDropCache {
                 dropPath = dropPath.substring(0, dropPath.length() - ".json".length());
             }
 
-            Identifier id = Identifier.fromNamespaceAndPath(
+            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(
                     LuckyBlock.MOD_ID,
                     "addons/" + addon.config().identifier() + "/drops/" + dropPath
             );

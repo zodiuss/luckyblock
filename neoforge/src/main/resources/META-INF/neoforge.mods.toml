@@ -15,14 +15,14 @@ logoFile="assets/lucky/icon.png"
 [[dependencies.lucky]]
 modId="neoforge"
 type="required"
-versionRange="[26.2.0,)"
+versionRange="[21.1.133,)"
 ordering="NONE"
 side="BOTH"
 
 [[dependencies.lucky]]
 modId="minecraft"
 type="required"
-versionRange="[26.2,26.3)"
+versionRange="[1.21.1,1.21.2)"
 ordering="NONE"
 side="BOTH"
 
@@ -30,4 +30,4 @@ side="BOTH"
 config="luckyblock.mixins.json"
 
 [modproperties.lucky]
-javaVersion="[25,)"
+javaVersion="[21,)"

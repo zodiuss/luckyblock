@@ -1,7 +1,7 @@
 package net.zodiuss.luckyblock.block;
 
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
@@ -25,14 +25,14 @@ public class LuckyBlocks {
     public static Block LUCKY_BLOCK;
 
     private static Block registerLuckyBlock(String name, Function<BlockBehaviour.Properties, Block> function) {
-        Identifier id = Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, name);
+        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, name);
         if (RegistryHelper.isNeoForgePublic()) {
             // On NeoForge, defer Block creation until RegisterEvent (registry frozen at mod construction)
             RegistryHelper.queueBlockFactory(id, function);
             // Don't create Block or Item now, will be done in RegisterEvent
             return null;
         }
-        Block toRegister = function.apply(BlockBehaviour.Properties.of().setId(ResourceKey.create(Registries.BLOCK, id)));
+        Block toRegister = function.apply(BlockBehaviour.Properties.of());
         registerLuckyBlockItem(name, toRegister);
         Block registered = RegistryHelper.registerBlock(id, toRegister);
         LUCKY_BLOCKS.add(registered);
@@ -45,9 +45,8 @@ public class LuckyBlocks {
             return;
         }
         RegistryHelper.registerItem(
-                Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, name),
-                new LuckyBlockItem(block, new Item.Properties().useBlockDescriptionPrefix()
-                        .setId(ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, name))))
+                ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, name),
+                new LuckyBlockItem(block, new Item.Properties())
         );
     }
 
@@ -57,14 +56,14 @@ public class LuckyBlocks {
             if (LUCKY_BLOCK == null) {
                 // Queue base block factory (will be created in RegisterEvent)
                 RegistryHelper.queueBlockFactory(
-                        Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_block"),
+                        ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_block"),
                         LuckyBlockBlock::new);
             }
             LuckyBlock.LOGGER.info("Registering lucky blocks (NeoForge queued)");
             for (LuckyAddon addon : AddonRegistry.getAddons()) {
                 if (addon.block() != null) continue;
                 RegistryHelper.queueBlockFactory(
-                        Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, addon.config().identifier()),
+                        ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, addon.config().identifier()),
                         LuckyBlockBlock::new);
             }
             return;
@@ -113,7 +112,7 @@ public class LuckyBlocks {
     }
 
     public static boolean isLuckyBlockId(String blockId) {
-        Identifier identifier = Identifier.tryParse(blockId);
+        ResourceLocation identifier = ResourceLocation.tryParse(blockId);
         if (identifier == null) {
             return false;
         }

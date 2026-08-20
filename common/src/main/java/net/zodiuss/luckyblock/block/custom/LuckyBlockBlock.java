@@ -13,7 +13,6 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-import net.minecraft.world.level.redstone.Orientation;
 import net.zodiuss.luckyblock.block.entity.LuckyBlockEntity;
 import net.zodiuss.luckyblock.component.CustomDropData;
 import net.zodiuss.luckyblock.component.ModComponents;
@@ -75,10 +74,10 @@ public class LuckyBlockBlock extends BaseEntityBlock {
             Level level,
             BlockPos pos,
             Block block,
-            @Nullable Orientation orientation,
+            BlockPos fromPos,
             boolean movedByPiston
     ) {
-        super.neighborChanged(state, level, pos, block, orientation, movedByPiston);
+        super.neighborChanged(state, level, pos, block, fromPos, movedByPiston);
 
         if (level instanceof ServerLevel serverLevel && level.hasNeighborSignal(pos)) {
             runDropAndRemove(serverLevel, pos, state, null);

@@ -5,7 +5,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -15,7 +14,7 @@ import net.zodiuss.luckyblock.component.CustomDropData;
 import net.zodiuss.luckyblock.component.ModComponents;
 import org.jspecify.annotations.NonNull;
 
-import java.util.function.Consumer;
+import java.util.List;
 
 public class LuckyBlockItem extends BlockItem {
 
@@ -36,13 +35,13 @@ public class LuckyBlockItem extends BlockItem {
 
 
     @Override
-    public void appendHoverText(ItemStack stack, @NonNull TooltipContext context, @NonNull TooltipDisplay displayComponent, @NonNull Consumer<Component> textConsumer, @NonNull TooltipFlag type) {
-        textConsumer.accept(formatLuck(stack.getOrDefault(ModComponents.LUCK, 0)));
+    public void appendHoverText(ItemStack stack, @NonNull TooltipContext context, @NonNull List<Component> tooltip, @NonNull TooltipFlag type) {
+        tooltip.add(formatLuck(stack.getOrDefault(ModComponents.LUCK, 0)));
 
         CustomDropData customDrop = stack.getOrDefault(ModComponents.CUSTOM_DROP, CustomDropData.EMPTY);
         if (customDrop.isPresent()) {
-            textConsumer.accept(Component.translatable("text." + LuckyBlock.MOD_ID + ".custom_drop").withStyle(ChatFormatting.GOLD));
-            customDrop.dropId().ifPresent(dropId -> textConsumer.accept(
+            tooltip.add(Component.translatable("text." + LuckyBlock.MOD_ID + ".custom_drop").withStyle(ChatFormatting.GOLD));
+            customDrop.dropId().ifPresent(dropId -> tooltip.add(
                     Component.literal(dropId).withStyle(ChatFormatting.GRAY)
             ));
         }

@@ -1,6 +1,6 @@
 package net.zodiuss.luckyblock.client.addon;
 
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.AbstractPackResources;
 import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackType;
@@ -44,9 +44,9 @@ public final class AddonPackResources extends AbstractPackResources {
         String blockId = addon.config().identifier();
         String textureId = addon.textureId();
         String displayName = addon.config().name();
-        Identifier blockModelId = resolveBlockModelId(blockId, textureId);
+        ResourceLocation blockModelId = resolveBlockModelId(blockId, textureId);
         String blockModelReference = blockModelId.getNamespace() + ":" + blockModelId.getPath();
-        Identifier itemModelId = resolveItemModelId(blockId, blockModelId);
+        ResourceLocation itemModelId = resolveItemModelId(blockId, blockModelId);
         String itemModelReference = itemModelId.getNamespace() + ":" + itemModelId.getPath();
 
         String blockstatePath = "assets/" + LuckyBlock.MOD_ID + "/blockstates/" + blockId + ".json";
@@ -96,8 +96,8 @@ public final class AddonPackResources extends AbstractPackResources {
         }
     }
 
-    private Identifier resolveBlockModelId(String blockId, String textureId) {
-        Optional<Identifier> packModel = AddonAssets.resolveBlockModelId(generatedResources, blockId);
+    private ResourceLocation resolveBlockModelId(String blockId, String textureId) {
+        Optional<ResourceLocation> packModel = AddonAssets.resolveBlockModelId(generatedResources, blockId);
         if (packModel.isPresent()) {
             return packModel.get();
         }
@@ -112,11 +112,11 @@ public final class AddonPackResources extends AbstractPackResources {
                 }
                 """.formatted(LuckyBlock.MOD_ID, textureId));
 
-        return Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "block/" + blockId);
+        return ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "block/" + blockId);
     }
 
-    private Identifier resolveItemModelId(String blockId, Identifier blockModelId) {
-        Optional<Identifier> packModel = AddonAssets.resolveItemModelId(generatedResources, blockId);
+    private ResourceLocation resolveItemModelId(String blockId, ResourceLocation blockModelId) {
+        Optional<ResourceLocation> packModel = AddonAssets.resolveItemModelId(generatedResources, blockId);
         if (packModel.isPresent()) {
             return packModel.get();
         }
@@ -127,10 +127,10 @@ public final class AddonPackResources extends AbstractPackResources {
             putGenerated(itemModelPath, defaultItemModelJson(blockModelReference(blockModelId)));
         }
 
-        return Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "item/" + itemModelName);
+        return ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "item/" + itemModelName);
     }
 
-    private static String blockModelReference(Identifier blockModelId) {
+    private static String blockModelReference(ResourceLocation blockModelId) {
         return blockModelId.getNamespace() + ":" + blockModelId.getPath();
     }
 
@@ -198,7 +198,7 @@ public final class AddonPackResources extends AbstractPackResources {
     }
 
     @Override
-    public IoSupplier<InputStream> getResource(PackType packType, Identifier location) {
+    public IoSupplier<InputStream> getResource(PackType packType, ResourceLocation location) {
         if (packType == PackType.CLIENT_RESOURCES && LuckyBlock.MOD_ID.equals(location.getNamespace())) {
             String resourcePath = "assets/" + location.getNamespace() + "/" + location.getPath();
             byte[] generated = generatedResources.get(resourcePath);
@@ -237,7 +237,7 @@ public final class AddonPackResources extends AbstractPackResources {
                 remainder = remainder.substring(1);
             }
 
-            resourceOutput.accept(Identifier.fromNamespaceAndPath(namespace, path + "/" + remainder), () -> new ByteArrayInputStream(entry.getValue()));
+            resourceOutput.accept(ResourceLocation.fromNamespaceAndPath(namespace, path + "/" + remainder), () -> new ByteArrayInputStream(entry.getValue()));
         }
     }
 

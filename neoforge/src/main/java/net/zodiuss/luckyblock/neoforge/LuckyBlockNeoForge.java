@@ -1,7 +1,7 @@
 package net.zodiuss.luckyblock.neoforge;
 
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
@@ -66,8 +66,8 @@ public class LuckyBlockNeoForge {
                     }
                 }
                 for (var e : RegistryHelper.PENDING_BLOCK_FACTORIES) {
-                    Identifier id = e.id();
-                    Block block = e.factory().apply(BlockBehaviour.Properties.of().setId(ResourceKey.create(Registries.BLOCK, id)));
+                    ResourceLocation id = e.id();
+                    Block block = e.factory().apply(BlockBehaviour.Properties.of());
                     helper.register(id, block);
                     LuckyBlocks.addLuckyBlock(block);
                     if (id.getPath().equals("lucky_block")) {
@@ -80,8 +80,8 @@ public class LuckyBlockNeoForge {
                             }
                         }
                     }
-                    Identifier itemId = id;
-                    RegistryHelper.queueItemFactory(itemId, () -> new LuckyBlockItem(block, new Item.Properties().useBlockDescriptionPrefix().setId(ResourceKey.create(Registries.ITEM, itemId))));
+                    ResourceLocation itemId = id;
+                    RegistryHelper.queueItemFactory(itemId, () -> new LuckyBlockItem(block, new Item.Properties()));
                 }
             });
         } else if (key.equals(Registries.ITEM)) {

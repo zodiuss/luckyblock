@@ -2,12 +2,12 @@ package net.zodiuss.luckyblock.fabric;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.CreativeModeTab;
 import net.zodiuss.luckyblock.LuckyBlock;
@@ -37,12 +37,12 @@ public class LuckyBlockFabric implements ModInitializer {
 
         // Populate custom creative tab via Fabric's CreativeModeTabEvents (avoids protected Output via builder)
         ResourceKey<CreativeModeTab> tabKey = ResourceKey.create(Registries.CREATIVE_MODE_TAB,
-                Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_blocks"));
-        CreativeModeTabEvents.modifyOutputEvent(tabKey).register(output -> {
-            output.accept(LuckyBlocks.LUCKY_BLOCK);
+                ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_blocks"));
+        ItemGroupEvents.modifyEntriesEvent(tabKey).register(entries -> {
+            entries.accept(LuckyBlocks.LUCKY_BLOCK);
             for (LuckyAddon addon : AddonRegistry.getAddons()) {
                 if (addon.block() != null) {
-                    output.accept(addon.block());
+                    entries.accept(addon.block());
                 }
             }
         });

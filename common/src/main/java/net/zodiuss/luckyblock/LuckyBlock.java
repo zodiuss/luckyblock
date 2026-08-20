@@ -1,6 +1,6 @@
 package net.zodiuss.luckyblock;
 
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.zodiuss.luckyblock.addon.AddonRegistry;
 import net.zodiuss.luckyblock.block.LuckyBlocks;
 import net.zodiuss.luckyblock.block.entity.ModBlockEntities;
@@ -57,7 +57,7 @@ public final class LuckyBlock {
         init(null);
     }
 
-    public static Identifier id(String path) {
-        return Identifier.fromNamespaceAndPath(MOD_ID, path);
+    public static ResourceLocation id(String path) {
+        return ResourceLocation.fromNamespaceAndPath(MOD_ID, path);
     }
 }

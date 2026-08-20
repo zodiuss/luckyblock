@@ -1,6 +1,6 @@
 package net.zodiuss.luckyblock.addon;
 
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.zodiuss.luckyblock.LuckyBlock;
 import org.jspecify.annotations.Nullable;
@@ -17,7 +17,7 @@ public final class LuckyAddon implements AutoCloseable {
     private final @Nullable FileSystem zipFileSystem;
     private final LuckyAddonConfig config;
     private final Path dropsDirectory;
-    private final Identifier blockId;
+    private final ResourceLocation blockId;
     private @Nullable Block block;
 
     public LuckyAddon(String sourceName, Path root, @Nullable FileSystem zipFileSystem, LuckyAddonConfig config) {
@@ -26,7 +26,7 @@ public final class LuckyAddon implements AutoCloseable {
         this.zipFileSystem = zipFileSystem;
         this.config = config;
         this.dropsDirectory = root.resolve(config.dropsDirectory()).normalize();
-        this.blockId = Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, config.identifier());
+        this.blockId = ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, config.identifier());
     }
 
     public String sourceName() {
@@ -45,12 +45,12 @@ public final class LuckyAddon implements AutoCloseable {
         return dropsDirectory;
     }
 
-    public Identifier blockId() {
+    public ResourceLocation blockId() {
         return blockId;
     }
 
-    public Identifier dropsSourceId() {
-        return Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "addons/" + config.identifier());
+    public ResourceLocation dropsSourceId() {
+        return ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "addons/" + config.identifier());
     }
 
     public String packId() {

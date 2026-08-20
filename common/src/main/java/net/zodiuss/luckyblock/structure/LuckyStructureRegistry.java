@@ -3,7 +3,7 @@ package net.zodiuss.luckyblock.structure;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -31,12 +31,12 @@ public final class LuckyStructureRegistry {
         HolderGetter<Block> blockLookup = server.registryAccess().lookupOrThrow(Registries.BLOCK);
         Map<String, LuckyStructureDefinition> loaded = new HashMap<>();
 
-        Map<Identifier, Resource> resources = resourceManager.listResources(
+        Map<ResourceLocation, Resource> resources = resourceManager.listResources(
                 STRUCTURES_FOLDER,
                 id -> id.getNamespace().equals(LuckyBlock.MOD_ID) && id.getPath().endsWith(".nbt")
         );
 
-        for (Map.Entry<Identifier, Resource> entry : resources.entrySet()) {
+        for (Map.Entry<ResourceLocation, Resource> entry : resources.entrySet()) {
             String path = entry.getKey().getPath();
             if (!path.startsWith(STRUCTURES_PATH_PREFIX)) {
                 continue;

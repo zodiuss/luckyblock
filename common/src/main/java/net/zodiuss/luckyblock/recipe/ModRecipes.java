@@ -2,7 +2,7 @@ package net.zodiuss.luckyblock.recipe;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
@@ -19,11 +19,11 @@ public class ModRecipes {
         // On NeoForge, queue for RegisterEvent; on Fabric, register directly
         if (RegistryHelper.isNeoForgePublic()) {
             RegistryHelper.queueRecipeSerializer(
-                    Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_luck"),
+                    ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_luck"),
                     LuckyLuckRecipe.SERIALIZER
             );
             RegistryHelper.queueRecipeType(
-                    Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_luck"),
+                    ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_luck"),
                     new RecipeType<LuckyLuckRecipe>() {
                         @Override
                         public String toString() {
@@ -34,12 +34,12 @@ public class ModRecipes {
         } else {
             LUCKY_LUCK_SERIALIZER = net.minecraft.core.Registry.register(
                     BuiltInRegistries.RECIPE_SERIALIZER,
-                    Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_luck"),
+                    ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_luck"),
                     LuckyLuckRecipe.SERIALIZER
             );
             LUCKY_LUCK_TYPE = net.minecraft.core.Registry.register(
                     BuiltInRegistries.RECIPE_TYPE,
-                    Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_luck"),
+                    ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_luck"),
                     new RecipeType<LuckyLuckRecipe>() {
                         @Override
                         public String toString() {

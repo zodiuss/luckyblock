@@ -2,7 +2,7 @@ package net.zodiuss.luckyblock.platform;
 
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.item.Item;
@@ -44,19 +44,19 @@ public class RegistryHelper {
     public static final List<PendingRecipeSerializer<?>> PENDING_RECIPE_SERIALIZERS = new ArrayList<>();
     public static final List<PendingRecipeType<?>> PENDING_RECIPE_TYPES = new ArrayList<>();
 
-    public record PendingBlock(Identifier id, Block block) {}
-    public record PendingBlockFactory(Identifier id, java.util.function.Function<net.minecraft.world.level.block.state.BlockBehaviour.Properties, Block> factory) {}
-    public record PendingItem(Identifier id, Item item) {}
-    public record PendingItemFactory(Identifier id, java.util.function.Supplier<Item> factory) {}
-    public record PendingDataComponent<T>(Identifier id, DataComponentType<T> type) {}
-    public record PendingBlockEntity(Identifier id, BlockEntityType<?> type) {}
-    public record PendingBlockEntityFactory(Identifier id, java.util.function.Supplier<BlockEntityType<?>> factory) {}
-    public record PendingTab(Identifier id, CreativeModeTab tab) {}
-    public record PendingTabFactory(Identifier id, java.util.function.Supplier<CreativeModeTab> factory) {}
-    public record PendingRecipeSerializer<T extends net.minecraft.world.item.crafting.Recipe<?>>(Identifier id, RecipeSerializer<T> serializer) {}
-    public record PendingRecipeType<T extends net.minecraft.world.item.crafting.Recipe<?>>(Identifier id, RecipeType<T> type) {}
+    public record PendingBlock(ResourceLocation id, Block block) {}
+    public record PendingBlockFactory(ResourceLocation id, java.util.function.Function<net.minecraft.world.level.block.state.BlockBehaviour.Properties, Block> factory) {}
+    public record PendingItem(ResourceLocation id, Item item) {}
+    public record PendingItemFactory(ResourceLocation id, java.util.function.Supplier<Item> factory) {}
+    public record PendingDataComponent<T>(ResourceLocation id, DataComponentType<T> type) {}
+    public record PendingBlockEntity(ResourceLocation id, BlockEntityType<?> type) {}
+    public record PendingBlockEntityFactory(ResourceLocation id, java.util.function.Supplier<BlockEntityType<?>> factory) {}
+    public record PendingTab(ResourceLocation id, CreativeModeTab tab) {}
+    public record PendingTabFactory(ResourceLocation id, java.util.function.Supplier<CreativeModeTab> factory) {}
+    public record PendingRecipeSerializer<T extends net.minecraft.world.item.crafting.Recipe<?>>(ResourceLocation id, RecipeSerializer<T> serializer) {}
+    public record PendingRecipeType<T extends net.minecraft.world.item.crafting.Recipe<?>>(ResourceLocation id, RecipeType<T> type) {}
 
-    public static Block registerBlock(Identifier id, Block block) {
+    public static Block registerBlock(ResourceLocation id, Block block) {
         if (IS_NEOFORGE) {
             PENDING_BLOCKS.add(new PendingBlock(id, block));
             return block;
@@ -65,11 +65,11 @@ public class RegistryHelper {
         }
     }
 
-    public static void queueBlockFactory(Identifier id, java.util.function.Function<net.minecraft.world.level.block.state.BlockBehaviour.Properties, Block> factory) {
+    public static void queueBlockFactory(ResourceLocation id, java.util.function.Function<net.minecraft.world.level.block.state.BlockBehaviour.Properties, Block> factory) {
         PENDING_BLOCK_FACTORIES.add(new PendingBlockFactory(id, factory));
     }
 
-    public static Item registerItem(Identifier id, Item item) {
+    public static Item registerItem(ResourceLocation id, Item item) {
         if (IS_NEOFORGE) {
             PENDING_ITEMS.add(new PendingItem(id, item));
             return item;
@@ -78,12 +78,12 @@ public class RegistryHelper {
         }
     }
 
-    public static void queueItemFactory(Identifier id, java.util.function.Supplier<Item> factory) {
+    public static void queueItemFactory(ResourceLocation id, java.util.function.Supplier<Item> factory) {
         PENDING_ITEM_FACTORIES.add(new PendingItemFactory(id, factory));
     }
 
     @SuppressWarnings("unchecked")
-    public static <T> DataComponentType<T> registerDataComponent(Identifier id, DataComponentType<T> type) {
+    public static <T> DataComponentType<T> registerDataComponent(ResourceLocation id, DataComponentType<T> type) {
         if (IS_NEOFORGE) {
             PENDING_DATA_COMPONENTS.add(new PendingDataComponent<>(id, type));
             return type;
@@ -92,7 +92,7 @@ public class RegistryHelper {
         }
     }
 
-    public static BlockEntityType<?> registerBlockEntity(Identifier id, BlockEntityType<?> type) {
+    public static BlockEntityType<?> registerBlockEntity(ResourceLocation id, BlockEntityType<?> type) {
         if (IS_NEOFORGE) {
             PENDING_BLOCK_ENTITIES.add(new PendingBlockEntity(id, type));
             return type;
@@ -101,11 +101,11 @@ public class RegistryHelper {
         }
     }
 
-    public static void queueBlockEntityFactory(Identifier id, java.util.function.Supplier<BlockEntityType<?>> factory) {
+    public static void queueBlockEntityFactory(ResourceLocation id, java.util.function.Supplier<BlockEntityType<?>> factory) {
         PENDING_BLOCK_ENTITY_FACTORIES.add(new PendingBlockEntityFactory(id, factory));
     }
 
-    public static CreativeModeTab registerTab(Identifier id, CreativeModeTab tab) {
+    public static CreativeModeTab registerTab(ResourceLocation id, CreativeModeTab tab) {
         if (IS_NEOFORGE) {
             PENDING_TABS.add(new PendingTab(id, tab));
             return tab;
@@ -114,11 +114,11 @@ public class RegistryHelper {
         }
     }
 
-    public static void queueTabFactory(Identifier id, java.util.function.Supplier<CreativeModeTab> factory) {
+    public static void queueTabFactory(ResourceLocation id, java.util.function.Supplier<CreativeModeTab> factory) {
         PENDING_TAB_FACTORIES.add(new PendingTabFactory(id, factory));
     }
 
-    public static <T extends net.minecraft.world.item.crafting.Recipe<?>> RecipeSerializer<T> registerRecipeSerializer(Identifier id, RecipeSerializer<T> serializer) {
+    public static <T extends net.minecraft.world.item.crafting.Recipe<?>> RecipeSerializer<T> registerRecipeSerializer(ResourceLocation id, RecipeSerializer<T> serializer) {
         if (IS_NEOFORGE) {
             PENDING_RECIPE_SERIALIZERS.add(new PendingRecipeSerializer<>(id, serializer));
             return serializer;
@@ -127,12 +127,12 @@ public class RegistryHelper {
         }
     }
 
-    public static void queueRecipeSerializer(Identifier id, RecipeSerializer<?> serializer) {
+    public static void queueRecipeSerializer(ResourceLocation id, RecipeSerializer<?> serializer) {
         //noinspection unchecked
-        PENDING_RECIPE_SERIALIZERS.add(new PendingRecipeSerializer<>((Identifier) id, (RecipeSerializer) serializer));
+        PENDING_RECIPE_SERIALIZERS.add(new PendingRecipeSerializer<>((ResourceLocation) id, (RecipeSerializer) serializer));
     }
 
-    public static <T extends net.minecraft.world.item.crafting.Recipe<?>> RecipeType<T> registerRecipeType(Identifier id, RecipeType<T> type) {
+    public static <T extends net.minecraft.world.item.crafting.Recipe<?>> RecipeType<T> registerRecipeType(ResourceLocation id, RecipeType<T> type) {
         if (IS_NEOFORGE) {
             PENDING_RECIPE_TYPES.add(new PendingRecipeType<>(id, type));
             return type;
@@ -141,9 +141,9 @@ public class RegistryHelper {
         }
     }
 
-    public static void queueRecipeType(Identifier id, RecipeType<?> type) {
+    public static void queueRecipeType(ResourceLocation id, RecipeType<?> type) {
         //noinspection unchecked
-        PENDING_RECIPE_TYPES.add(new PendingRecipeType<>((Identifier) id, (RecipeType) type));
+        PENDING_RECIPE_TYPES.add(new PendingRecipeType<>((ResourceLocation) id, (RecipeType) type));
     }
 
     public static boolean isNeoForgePublic() {

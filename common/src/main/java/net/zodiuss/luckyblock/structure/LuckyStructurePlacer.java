@@ -5,7 +5,7 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.NopProcessor;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessorType;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.zodiuss.luckyblock.LuckyBlock;
 import net.zodiuss.luckyblock.component.StructureAnchor;
@@ -38,7 +39,7 @@ public final class LuckyStructurePlacer {
             BlockPos blockPos,
             @Nullable Player player,
             RandomSource random,
-            Identifier dropId,
+            ResourceLocation dropId,
             String jsonPath
     ) {
         place(structure, server, level, blockPos, player, random, dropId, jsonPath, StructureAnchor.EMPTY);
@@ -51,7 +52,7 @@ public final class LuckyStructurePlacer {
             BlockPos blockPos,
             @Nullable Player player,
             RandomSource random,
-            Identifier dropId,
+            ResourceLocation dropId,
             String jsonPath,
             StructureAnchor structureAnchor
     ) {
@@ -226,7 +227,7 @@ public final class LuckyStructurePlacer {
         return object.get(key).getAsInt();
     }
 
-    private static final class BlockModeProcessor implements StructureProcessor {
+    private static final class BlockModeProcessor extends StructureProcessor {
         private final String blockMode;
 
         private BlockModeProcessor(String blockMode) {
@@ -234,43 +235,43 @@ public final class LuckyStructurePlacer {
         }
 
         @Override
-        public StructureTemplate.@Nullable StructureBlockInfo processBlock(
+        public StructureTemplate.StructureBlockInfo processBlock(
                 LevelReader level,
-                BlockPos targetPosition,
-                BlockPos referencePos,
-                BlockPos templateRelativePos,
-                StructureTemplate.StructureBlockInfo processedBlockInfo,
+                BlockPos pos,
+                BlockPos pivot,
+                StructureTemplate.StructureBlockInfo original,
+                StructureTemplate.StructureBlockInfo current,
                 StructurePlaceSettings settings
         ) {
-            Identifier blockId = BuiltInRegistries.BLOCK.getKey(processedBlockInfo.state().getBlock());
+            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(current.state().getBlock());
             String blockIdWithMode = withBlockMode(blockMode, blockId.toString());
             if (blockIdWithMode == null) {
                 return new StructureTemplate.StructureBlockInfo(
-                        processedBlockInfo.pos(),
-                        level.getBlockState(processedBlockInfo.pos()),
-                        processedBlockInfo.nbt()
+                        current.pos(),
+                        level.getBlockState(current.pos()),
+                        current.nbt()
                 );
             }
             if (blockIdWithMode.equals(blockId.toString())) {
-                return processedBlockInfo;
+                return current;
             }
 
-            Block block = BuiltInRegistries.BLOCK.getValue(Identifier.parse(blockIdWithMode));
+            Block block = BuiltInRegistries.BLOCK.get(ResourceLocation.parse(blockIdWithMode));
             if (block == null) {
-                return processedBlockInfo;
+                return current;
             }
 
             BlockState newState = block.defaultBlockState();
-            if (newState == processedBlockInfo.state()) {
-                return processedBlockInfo;
+            if (newState == current.state()) {
+                return current;
             }
 
-            return new StructureTemplate.StructureBlockInfo(processedBlockInfo.pos(), newState, processedBlockInfo.nbt());
+            return new StructureTemplate.StructureBlockInfo(current.pos(), newState, current.nbt());
         }
 
         @Override
-        public MapCodec<? extends StructureProcessor> codec() {
-            return NopProcessor.MAP_CODEC;
+        protected StructureProcessorType<?> getType() {
+            return StructureProcessorType.NOP;
         }
     }
 }

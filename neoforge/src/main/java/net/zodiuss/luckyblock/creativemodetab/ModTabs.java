@@ -1,7 +1,7 @@
 package net.zodiuss.luckyblock.creativemodetab;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
 import net.zodiuss.luckyblock.LuckyBlock;
@@ -13,7 +13,7 @@ public class ModTabs {
 
     public static void register() {
         LUCKY_BLOCK_TAB = RegistryHelper.registerTab(
-                Identifier.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_blocks"),
+                ResourceLocation.fromNamespaceAndPath(LuckyBlock.MOD_ID, "lucky_blocks"),
                 CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
                         .icon(() -> new ItemStack(LuckyBlocks.LUCKY_BLOCK))
                         .title(Component.literal("Lucky Blocks"))

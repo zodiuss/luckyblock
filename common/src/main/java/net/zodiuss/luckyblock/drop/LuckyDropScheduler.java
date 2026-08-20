@@ -51,7 +51,7 @@ public final class LuckyDropScheduler {
             try {
                 delayed.action().run();
             } catch (RuntimeException exception) {
-                LuckyBlock.LOGGER.warn("Delayed lucky drop action failed in {}", delayed.dimension().identifier(), exception);
+                LuckyBlock.LOGGER.warn("Delayed lucky drop action failed in {}", delayed.dimension().location(), exception);
             }
         }
     }

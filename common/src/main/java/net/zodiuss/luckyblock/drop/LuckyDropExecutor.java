@@ -1367,6 +1367,7 @@ public class LuckyDropExecutor {
             value = convertJsonCustomNames(value, context);
             value = convertSignMessages(value, context);
             value = convertEquipmentForPre1_21_2(value);
+            value = convertFuseForPre1_21_2(value);
             return value;
         }
         if (value.startsWith("(") && value.endsWith(")")) {
@@ -1477,6 +1478,18 @@ public class LuckyDropExecutor {
             }
         }
         return out.toString();
+    }
+
+    private static String convertFuseForPre1_21_2(String value) {
+        // 1.21.1 PrimedTnt uses lowercase "fuse" (short). Data files from 26.2 use "Fuse:50" / "Fuse:50b".
+        // Normalize at runtime so both cases work and int without suffix is coerced via getShort.
+        // Also normalize Motion case is already correct (capital M).
+        if (value.contains("Fuse:")) {
+            // Replace Fuse: with fuse: when used as NBT key (after { or ,)
+            // Simple global replace is safe – "Fuse" only appears as NBT key for TNT.
+            value = value.replace("Fuse:", "fuse:");
+        }
+        return value;
     }
 
     private static java.util.Map<String,String> parseEquipmentMap(String inner) {

@@ -91,7 +91,7 @@
                 "pos": "#sCenter(4,3,6)",
                 "posOffset": "#sPos(4,4,4)",
                 "amount": 30,
-                "nbt": "{Fuse:50,Motion:#randLaunchMotion}"
+                "nbt": "{fuse:80s,Motion:#randLaunchMotion}"
               }
             }
           ]

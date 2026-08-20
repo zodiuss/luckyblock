@@ -8,8 +8,12 @@
     "GGG"
   ],
   "key": {
-    "G": "minecraft:gold_ingot",
-    "D": "minecraft:dispenser"
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "D": {
+      "item": "minecraft:dispenser"
+    }
   },
   "result": {
     "id": "lucky:lucky_block",

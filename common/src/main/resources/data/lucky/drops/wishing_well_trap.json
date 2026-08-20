@@ -43,7 +43,7 @@
                 "type": "minecraft:tnt",
                 "amount": 30,
                 "y": "0+7",
-                "nbt": "{Fuse:50b,Motion:#randLaunchMotion}"
+                "nbt": "{fuse:80s,Motion:#randLaunchMotion}"
               }
             }
           ]

@@ -1032,10 +1032,16 @@ public class LuckyDropExecutor {
             json.append(",\"color\":\"").append(unquote(props.get("color"))).append("\"");
         }
         if (props.containsKey("bold")) {
-            json.append(",\"bold\":").append(props.get("bold"));
+            String bold = props.get("bold").trim();
+            if (bold.equals("1b") || bold.equalsIgnoreCase("true")) bold = "true";
+            else if (bold.equals("0b") || bold.equalsIgnoreCase("false")) bold = "false";
+            json.append(",\"bold\":").append(bold);
         }
         if (props.containsKey("italic")) {
-            json.append(",\"italic\":").append(props.get("italic"));
+            String italic = props.get("italic").trim();
+            if (italic.equals("1b") || italic.equalsIgnoreCase("true")) italic = "true";
+            else if (italic.equals("0b") || italic.equalsIgnoreCase("false")) italic = "false";
+            json.append(",\"italic\":").append(italic);
         }
 
         String rawJson = json.append('}').toString();
@@ -1722,20 +1728,43 @@ public class LuckyDropExecutor {
     }
 
     private static String convertTextComponentJson(String jsonObject, Context context) {
+        // Try strict JSON first: "text":"value"
         Matcher matcher = Pattern.compile("\"text\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"")
                 .matcher(jsonObject);
-        if (!matcher.find()) {
-            return jsonObject;
+        if (matcher.find()) {
+            String text = unescapeJsonString(matcher.group(1));
+            if (!DropMessages.usesFormattedText(text)) {
+                String escaped = jsonObject.replace("\"", "\\\"");
+                return "\"" + escaped + "\"";
+            }
+            return DropMessages.toJsonString(text, context.level().registryAccess());
         }
-
-        String text = unescapeJsonString(matcher.group(1));
-        if (!DropMessages.usesFormattedText(text)) {
-            // 1.21.1: entity CustomName and trade custom_name JSON objects must be stringified
-            String escaped = jsonObject.replace("\"", "\\\"");
-            return "\"" + escaped + "\"";
+        // Fallback: SNBT-like {text:..., color:..., bold:...} with unquoted keys/values
+        // e.g. {text:Llaura,color:dark_purple,bold:1b} or {text:"Baby #pName"}
+        // Convert to legacy (text=...,color=...) form and delegate to legacyTextComponent
+        if (jsonObject.trim().startsWith("{") && jsonObject.contains("text")) {
+            String inner = jsonObject.trim();
+            inner = inner.substring(1, inner.length() - 1); // strip {}
+            // Normalize : to = and keep values as-is, wrap in () for legacy parser
+            // Only convert first-level : to =, but splitTopLevel will handle quoted values
+            String legacy = "(" + inner.replace(":", "=") + ")";
+            String stringified = legacyTextComponent(legacy, context);
+            // legacyTextComponent already returns stringified JSON like "{\"text\":...}"
+            // If it returned same as input (no text key), fallback to original
+            if (!stringified.equals("\"" + inner.replace("\"", "\\\"") + "\"")) {
+                return stringified;
+            }
+            // Last resort: try to extract text value more leniently (unquoted)
+            java.util.regex.Pattern p2 = java.util.regex.Pattern.compile("text\\s*[:=]\\s*\"?([^\",}]+)\"?");
+            java.util.regex.Matcher m2 = p2.matcher(jsonObject);
+            if (m2.find()) {
+                String rawText = m2.group(1).trim();
+                // Build minimal legacy form with just text
+                String minimalLegacy = "(text=" + rawText + ")";
+                return legacyTextComponent(minimalLegacy, context);
+            }
         }
-
-        return DropMessages.toJsonString(text, context.level().registryAccess());
+        return jsonObject;
     }
 
     private static String unescapeJsonString(String value) {

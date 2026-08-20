@@ -12,7 +12,7 @@
         "type": "minecraft:oak_sign",
         "y": 1,
         "state": "[rotation=#pSignRotation]",
-        "nbt": "{front_text:{messages:[\"Well, there's\",\"your problem\",\"\",\"\"]}}"
+        "nbt": "{front_text:{messages:['{\"text\":\"Well, there\'s\"}','{\"text\":\"your problem\"}','{\"text\":\"\"}','{\"text\":\"\"}']}}"
       }
     }
   ]

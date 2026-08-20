@@ -987,7 +987,9 @@ public class LuckyDropExecutor {
             json.append(",\"italic\":").append(props.get("italic"));
         }
 
-        return json.append('}').toString();
+        String rawJson = json.append('}').toString();
+        // 1.21.1 requires custom_name as a stringified JSON: "{"text":"..."}"
+        return "\"" + rawJson.replace("\"", "\\\"") + "\"";
     }
 
     private static String enchantmentComponent(String rawEnchantments, Context context) {
@@ -1362,7 +1364,9 @@ public class LuckyDropExecutor {
     private static String legacyNbtBody(String value, Context context) {
         value = replaceLegacyTemplates(value, context).trim();
         if (value.startsWith("{") && value.endsWith("}")) {
-            return convertJsonCustomNames(value, context);
+            value = convertJsonCustomNames(value, context);
+            value = convertSignMessages(value, context);
+            return value;
         }
         if (value.startsWith("(") && value.endsWith(")")) {
             value = value.substring(1, value.length() - 1);
@@ -1372,6 +1376,39 @@ public class LuckyDropExecutor {
         value = convertLegacyBlockStateNames(value);
         value = convertLegacyResourceFields(value);
         return "{" + toSnbt(value) + "}";
+    }
+
+    private static String convertSignMessages(String value, Context context) {
+        // 1.21.1: front_text.messages plain strings must be JSON text component strings: '{"text":"..."}'
+        if (!value.contains("front_text") || !value.contains("messages:")) return value;
+        // Replace messages: ["","One is lucky.",...] plain strings with ['{"text":""}','{"text":"One is lucky."}',...]
+        // Pattern matches messages:[ "","X",...] where entries are quoted strings not already JSON
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile("messages:\\s*\\[([^\\]]*)\\]");
+        java.util.regex.Matcher m = p.matcher(value);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            String inner = m.group(1);
+            // Split inner by comma but respecting quotes
+            String[] parts = inner.split(",");
+            StringBuilder rebuilt = new StringBuilder();
+            for (int i=0;i<parts.length;i++) {
+                String part = parts[i].trim();
+                // part is like "\"One is lucky.\""
+                if (part.startsWith("\"") && part.endsWith("\"") && !part.contains("{\"text\"")) {
+                    String unq = part.substring(1, part.length()-1);
+                    // Empty string stays as '{"text":""}'
+                    String json = "{\"text\":\"" + unq.replace("\"", "\\\"") + "\"}";
+                    part = "'"+ json.replace("'", "\\'") + "'";
+                    // Use single quotes SNBT string: '{"text":"..."}'
+                    // Actually SNBT string for JSON text component is single-quoted: '{"text":"One is lucky."}'
+                }
+                if (i>0) rebuilt.append(",");
+                rebuilt.append(part);
+            }
+            m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement("messages:["+rebuilt.toString()+"]"));
+        }
+        m.appendTail(sb);
+        return sb.toString();
     }
 
     private static String randomItemMotion(Context context) {
@@ -1547,7 +1584,9 @@ public class LuckyDropExecutor {
 
         String text = unescapeJsonString(matcher.group(1));
         if (!DropMessages.usesFormattedText(text)) {
-            return jsonObject;
+            // 1.21.1: entity CustomName and trade custom_name JSON objects must be stringified
+            String escaped = jsonObject.replace("\"", "\\\"");
+            return "\"" + escaped + "\"";
         }
 
         return DropMessages.toJsonString(text, context.level().registryAccess());

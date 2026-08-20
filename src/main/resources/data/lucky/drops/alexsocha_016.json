@@ -1,9 +1,0 @@
-{
-  "luck": 2,
-  "weight": 1.0,
-  "drop": {
-    "item": {
-      "type": "minecraft:enchanting_table"
-    }
-  }
-}

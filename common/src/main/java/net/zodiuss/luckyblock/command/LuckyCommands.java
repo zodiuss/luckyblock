@@ -3,32 +3,72 @@ package net.zodiuss.luckyblock.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.zodiuss.luckyblock.LuckyBlock;
+import net.zodiuss.luckyblock.addon.AddonDropCache;
 import net.zodiuss.luckyblock.block.LuckyBlocks;
 import net.zodiuss.luckyblock.block.custom.LuckyBlockBlock;
 import net.zodiuss.luckyblock.component.CustomDropData;
 import net.zodiuss.luckyblock.component.ModComponents;
+import net.zodiuss.luckyblock.drop.LuckyDrop;
 import net.zodiuss.luckyblock.drop.LuckyDropExecutor;
 import net.zodiuss.luckyblock.drop.LuckyDropSelector;
+import net.zodiuss.luckyblock.drop.VanillaDropCache;
 
 public class LuckyCommands {
+    private static final SuggestionProvider<CommandSourceStack> DROP_SUGGESTIONS = (context, builder) -> {
+        MinecraftServer server = context.getSource().getServer();
+        if (server == null) {
+            return builder.buildFuture();
+        }
+        // Suggest vanilla drops
+        for (LuckyDrop drop : VanillaDropCache.getAllDrops()) {
+            String id = drop.id().toString();
+            String path = drop.id().getPath();
+            String fileName = path.substring(path.lastIndexOf('/') + 1);
+            if (fileName.endsWith(".json")) fileName = fileName.substring(0, fileName.length() - 5);
+            String relative = path.startsWith("drops/") ? path.substring(6) : path;
+            if (relative.endsWith(".json")) relative = relative.substring(0, relative.length() - 5);
+            builder.suggest(fileName);
+            if (!fileName.equals(relative)) builder.suggest(relative);
+            builder.suggest(id);
+        }
+        // Suggest addon drops
+        for (LuckyDrop drop : AddonDropCache.getAllDrops()) {
+            String id = drop.id().toString();
+            String path = drop.id().getPath();
+            // addons/<addon>/drops/<name> -> suggest <name> and full id
+            int idx = path.indexOf("/drops/");
+            String fileName = path.substring(path.lastIndexOf('/') + 1);
+            if (fileName.endsWith(".json")) fileName = fileName.substring(0, fileName.length() - 5);
+            String relative = idx >= 0 ? path.substring(idx + 7) : path;
+            if (relative.endsWith(".json")) relative = relative.substring(0, relative.length() - 5);
+            builder.suggest(fileName);
+            if (!fileName.equals(relative)) builder.suggest(relative);
+            builder.suggest(id);
+        }
+        return builder.buildFuture();
+    };
+
     /** Loader-agnostic registration: loader passes dispatcher from its event */
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registryAccess, Commands.CommandSelection environment) {
         dispatcher.register(
                 Commands.literal("lucky")
                         .then(Commands.literal("drop")
-                                .then(Commands.argument("name", StringArgumentType.string())
+                                .then(Commands.argument("name", StringArgumentType.string()).suggests(DROP_SUGGESTIONS)
                                         .executes(context -> runDrop(context.getSource(), StringArgumentType.getString(context, "name")))))
                         .then(Commands.literal("give")
                                 .then(Commands.argument("targets", EntityArgument.players())
-                                        .then(Commands.argument("drop", StringArgumentType.string())
+                                        .then(Commands.argument("drop", StringArgumentType.string()).suggests(DROP_SUGGESTIONS)
                                                 .executes(context -> runGive(
                                                         context.getSource(),
                                                         EntityArgument.getPlayers(context, "targets"),

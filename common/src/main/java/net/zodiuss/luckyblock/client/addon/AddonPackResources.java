@@ -1,8 +1,9 @@
 package net.zodiuss.luckyblock.client.addon;
 
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.packs.AbstractPackResources;
+import net.minecraft.server.packs.AbstractPackMetadataResources;
 import net.minecraft.server.packs.PackLocationInfo;
+import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.PathPackResources;
 import net.minecraft.server.packs.resources.IoSupplier;
@@ -22,7 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-public final class AddonPackResources extends AbstractPackResources {
+public final class AddonPackResources extends AbstractPackMetadataResources implements PackResources {
     private final LuckyAddon addon;
     private final PathPackResources delegate;
     private final Map<String, byte[]> generatedResources = new HashMap<>();

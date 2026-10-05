@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version "${loom_version}"
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
 
@@ -20,9 +20,6 @@ fabricApi {
     }
 }
 
-loom {
-    // Simple loom for 26.2 - Mojang mappings, no split
-}
 
 sourceSets {
     main {
@@ -40,7 +37,6 @@ dependencies {
     compileOnly "net.fabricmc:sponge-mixin:0.15.4+mixin.0.8.7"
     annotationProcessor "net.fabricmc:sponge-mixin:0.15.4+mixin.0.8.7"
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:1.21.11+build.6:v2"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 

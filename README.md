@@ -40,3 +40,11 @@ These addons are provided via a _.zip_ file, and are placed within the
 .minecraft/addons
 ``
 folder of the game (which you will have to create yourself).
+
+## Minecraft versions
+
+`main` targets Minecraft 26.3 with Java 25, for Fabric and NeoForge.
+The `26.2` branch preserves the Minecraft 26.2 version; `1.21.1` preserves the older version.
+
+Build both loaders with `./gradlew buildAll`. The jars are written to
+`fabric/build/libs` and `neoforge/build/libs`.

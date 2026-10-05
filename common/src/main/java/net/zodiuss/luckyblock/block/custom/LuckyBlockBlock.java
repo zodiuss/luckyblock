@@ -1,6 +1,5 @@
 package net.zodiuss.luckyblock.block.custom;
 
-import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
@@ -25,7 +24,6 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 public class LuckyBlockBlock extends BaseEntityBlock {
-    public static final MapCodec<LuckyBlockBlock> CODEC = simpleCodec(LuckyBlockBlock::new);
     public static final int MIN_LUCK = -100;
     public static final int MAX_LUCK = 100;
     private static final int LUCK_OFFSET = -MIN_LUCK;
@@ -34,11 +32,6 @@ public class LuckyBlockBlock extends BaseEntityBlock {
     public LuckyBlockBlock(BlockBehaviour.Properties properties) {
         super(properties.strength(0.3F).sound(SoundType.STONE));
         registerDefaultState(defaultBlockState().setValue(LUCK, encodeLuck(0)));
-    }
-
-    @Override
-    protected @NonNull MapCodec<LuckyBlockBlock> codec() {
-        return CODEC;
     }
 
     public static int clampLuck(int luck) {

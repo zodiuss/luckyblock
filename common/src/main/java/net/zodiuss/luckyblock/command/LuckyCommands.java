@@ -9,6 +9,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Prediction;
 import net.minecraft.world.item.ItemStack;
 import net.zodiuss.luckyblock.LuckyBlock;
 import net.zodiuss.luckyblock.block.LuckyBlocks;
@@ -86,7 +87,7 @@ public class LuckyCommands {
             stack.set(ModComponents.CUSTOM_DROP, CustomDropData.ofId(dropName));
 
             if (!player.getInventory().add(stack)) {
-                player.drop(stack, false);
+                player.drop(stack, false, Prediction.SERVER_ONLY);
             }
 
             count++;

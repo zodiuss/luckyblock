@@ -541,7 +541,7 @@ public class LuckyDropExecutor {
         Vec3 velocity = resolveImpulseVector(impulse, context);
         for (Entity target : resolveTargets(impulse, context)) {
             target.setDeltaMovement(target.getDeltaMovement().add(velocity));
-            target.hurtMarked = true;
+            target.syncVelocity = true;
         }
     }
 
@@ -854,11 +854,9 @@ public class LuckyDropExecutor {
                 Vec2.ZERO,
                 context.level(),
                 context.level().getServer().operatorUserPermissions(),
-                "Lucky Block",
                 Component.literal("Lucky Block"),
-                context.level().getServer(),
-                serverPlayer
-        );
+                context.level().getServer()
+        ).withEntity(serverPlayer);
     }
 
     private static String relativePos(JsonObject object, RandomSource random) {

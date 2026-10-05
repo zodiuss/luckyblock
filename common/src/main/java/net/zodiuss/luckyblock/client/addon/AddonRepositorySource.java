@@ -15,6 +15,7 @@ import net.zodiuss.luckyblock.addon.LuckyAddon;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 public final class AddonRepositorySource implements RepositorySource {
     @Override
@@ -29,13 +30,13 @@ public final class AddonRepositorySource implements RepositorySource {
 
             Pack.ResourcesSupplier resourcesSupplier = new Pack.ResourcesSupplier() {
                 @Override
-                public PackResources openPrimary(PackLocationInfo locationInfo) {
+                public PackResources openMetadata(PackLocationInfo locationInfo) {
                     return new AddonPackResources(locationInfo, addon);
                 }
 
                 @Override
-                public PackResources openFull(PackLocationInfo locationInfo, Pack.Metadata metadata) {
-                    return openPrimary(locationInfo);
+                public Stream<PackResources> openResources(PackLocationInfo locationInfo, Pack.Metadata metadata) {
+                    return Stream.of(new AddonPackResources(locationInfo, addon));
                 }
             };
 
